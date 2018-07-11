@@ -26,7 +26,8 @@ void pubHandler::publish(pcl::PointCloud<pcl::PointXYZ> msg){
 //callback function for the subscriber. performs all of the enqueuing and dequeuing;
 void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg){
 	ROS_INFO("Recieving Cloud...");
-	_data = *msg;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>(*msg));
+	_data = temp;
 	//ROS_INFO("Check 2");
 
 	//ROS_INFO("Check 3");
@@ -62,8 +63,9 @@ Eigen::Vector3d pubHandler::differenceOfVec(Eigen::Vector3d start, Eigen::Vector
 
 
 //this is the pre-processing step that transforms and filters the point cloud queue
-pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ> > window, std::deque<nav_msgs::Odometry> odomWindow){
-	pcl::PointCloud<pcl::PointXYZ> ptCloudScene = pcl::PointCloud<pcl::PointXYZ>(window[0]);
+pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, std::deque<nav_msgs::Odometry> odomWindow){
+	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(*window[0]));
+	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudSceneFiltered(new pcl::PointCloud<pcl::PointXYZ>);
 
 	Eigen::Vector3d endV;
 	Eigen::Vector3d startV;
@@ -82,11 +84,15 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 		affine.translation() << differenceV[0],differenceV[1],differenceV[2];
 		affine.rotate(differenceQ.toRotationMatrix());
 		pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::transformPointCloud(window[i],*transformedCloud,affine);
-		ptCloudScene+= *transformedCloud;
+		pcl::transformPointCloud(*window[i],*transformedCloud,affine);
+		*ptCloudScene += *transformedCloud;
 	}
+	pcl::VoxelGrid<pcl::PointXYZ> sor;
+	sor.setInputCloud(ptCloudScene);
+	sor.setLeafSize (0.075f, 0.075f, 0.075f);
+	sor.filter(*ptCloudSceneFiltered);
 	ROS_INFO("SUCCESS");
-	return ptCloudScene;
+	return *ptCloudSceneFiltered;
 }
 
 //this is the primary algorithm used to determine the best vectors for travel

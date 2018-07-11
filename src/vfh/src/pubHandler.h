@@ -20,6 +20,9 @@
 #include "pcl/common/transforms.h"
 #include "pcl_conversions/pcl_conversions.h"
 #include "tf2/LinearMath/Quaternion.h"
+#include <pcl_ros/filters/voxel_grid.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
 
 #include <iostream>
 #include "trajectory.h"
@@ -37,13 +40,13 @@ public:
 private:
 	/* Private Variables*/
 	ros::Publisher _pub;
-	pcl::PointCloud<pcl::PointXYZ> _data;
-	std::deque<pcl::PointCloud<pcl::PointXYZ> > _window;
+	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
+	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
 	int _queueSize;
 	/*Private Functions*/
 	std::map<std::string,std::vector<trajectory> > _vfh3D();
-	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ> > window,std::deque<nav_msgs::Odometry> odomWindow);
+	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
 
 #endif /* PUBHANDLER_H_ */
