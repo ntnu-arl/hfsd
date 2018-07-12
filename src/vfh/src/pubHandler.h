@@ -44,6 +44,7 @@ private:
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
 	int _queueSize;
+	int _count;
 	/*Private Functions*/
 	std::map<std::string,std::vector<trajectory> > _vfh3D();
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);

@@ -10,7 +10,8 @@
 //constructor for pubHandler class
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pub = n.advertise<sensor_msgs::PointCloud2>(s,num);
-	_queueSize = 5;
+	_queueSize = 7;
+	_count = 2;
 }
 
 //used to publish data from the publisher and check for errors
@@ -36,6 +37,7 @@ void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::Cons
 
 //this recieves the odometry for the program to create the sliding window
 void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
+	if(_count == 2){
 	ROS_INFO("Receiving Odometry...");
 	nav_msgs::Odometry odomData = *msg;
 	if(_window.size() == _queueSize){
@@ -48,12 +50,17 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 	pcl::PointCloud<pcl::PointXYZ> ptCloudScene = pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow));
 	//ROS_INFO("Check 3");
 	this->publish(ptCloudScene);
+	_count = 0;
+	}else{
+		ROS_INFO("SKIPPING...");
+		_count++;
+	}
 	//ROS_INFO("Check 4");
 }
 
 //takes in two quaternions and gives back the quaternion that rotates from the starting quaternion to the next quaternion
 Eigen::Quaterniond pubHandler::differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end){
-	Eigen::Quaterniond difference = start.inverse() * end;
+	Eigen::Quaterniond difference =  end * start.inverse();
 	return difference;
 }
 Eigen::Vector3d pubHandler::differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end){
@@ -74,10 +81,12 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 
 	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
 	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
+	//endV = endV.transpose() * endQ.toRotationMatrix();
 	for(int i = 1; i<window.size();i++){
 		tf2::fromMsg(odomWindow[i].pose.pose.position, startV);
 		tf2::fromMsg(odomWindow[i].pose.pose.orientation,startQ);
 		Eigen::Quaterniond differenceQ = differenceOfQuat(startQ,endQ);
+		//startV = startV.transpose() * endQ.toRotationMatrix();
 		Eigen::Vector3d differenceV = differenceOfVec(startV,endV);
 		differenceV = differenceV.transpose() * endQ.toRotationMatrix();
 		Eigen::Affine3d affine = Eigen::Affine3d::Identity();;
