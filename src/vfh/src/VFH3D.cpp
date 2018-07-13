@@ -24,11 +24,6 @@ int main(int argc, char** argv) {
 	ros::Subscriber sub = n.subscribe<pcl::PointCloud<pcl::PointXYZ> >(topic,queue_size,&pubHandler::messageReceivedCloud, &handler);
 	ros::Subscriber subod = n.subscribe<nav_msgs::Odometry>("aft_mapped_to_init_CORRECTED",queue_size,&pubHandler::messageReceivedPose, &handler);
 	ros::spin();
-	// TODO Create Call back system for Odometry
-	// TODO Write transformations for point Clouds
-	// TODO Write Code for Cloud Queuing and Pre-processing Information
-	// TODO Use OpenCV to Process Histogram
-	// TODO Output Vectors
 	return 0;
 }
 

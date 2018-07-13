@@ -12,8 +12,8 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pub = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_queueSize = 7;
 	_count = 2;
-	_HREZ = 180;
-	_VREZ =15;
+	//_HREZ = 180;
+	//_VREZ =90;
 }
 
 //used to publish data from the publisher and check for errors
@@ -107,10 +107,29 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	return *ptCloudSceneFiltered;
 }
 
-cv::Mat pubHandler::_radmatrix(pcl::PointCloud<pcl::PointXYZ>){
-	cv::Mat radmat(_HREZ, _VREZ,CV_8UC1, cv::Scalar(1));
-	int tempMat[_HREZ][_VREZ];
-
+cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
+	cv::Mat radmat(_HREZ, _VREZ,CV_8UC1, cv::Scalar(0));
+	double tempMat[_HREZ][_VREZ];
+	for(int row = 0; row<points.size();row++){
+		if(tempMat[points.at(row).a][points.at(row).e] > points.at(row).r
+				||tempMat[points.at(row).a][points.at(row).e]==0){
+			tempMat[points.at(row).a][points.at(row).e] = points.at(row).r;
+		}
+	}
+	double max = 0;
+	for(const auto &i: tempMat){
+		if(*i > max){
+			max = *i;
+		}
+	}
+	for(auto &i:tempMat){
+		*i = 255*(1-*i/max);
+	}
+	for(int row = 0; row<_HREZ; row++){
+		for(int col = 0; col < _VREZ; col++){
+			radmat.at<cv::Scalar>(row,col) = cv::Scalar(tempMat[row][col]);
+		}
+	}
 	//TODO: Write the sectorization Methods
 	//TODO: Write Intensity value matrix in mat form
 	return radmat;
@@ -118,22 +137,26 @@ cv::Mat pubHandler::_radmatrix(pcl::PointCloud<pcl::PointXYZ>){
 //this is the primary algorithm used to determine the best vectors for travel
 std::map<std::string,std::vector<trajectory> > pubHandler::_vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
 	std::map<std::string,std::vector<trajectory> > trajVec;
-
+	std::vector<std::vector<double> > points = _extractPointsFromCloud(cloud);
+	points = _convertToSpherical(points);
+	std::vector<pubHandler::sector> sectors = _sectorize(points);
+	cv::Mat grayMat = _radmatrix(sectors);
 	//TODO process radmatrix into binary matrix using opencv's gaussian adaptive threshold
 	//TODO Find Centroids of binary matrix regions.
 	//TODO Classify the trajectory vectors in the map
 	return trajVec;
 
 }
-std::vector<std::vector<double> > pubHandler::_convertToSphereical(std::vector<std::vector<double> > xyz){
+std::vector<std::vector<double> > pubHandler::_convertToSpherical(std::vector<std::vector<double> > xyz){
 	//TODO::convert vector of n rows and three columns from cartesian to spherical
 	for(int i = 0; i< xyz.size();i++){
 		double x=xyz.at(i).at(0);
 		double y=xyz.at(i).at(1);
 		double z=xyz.at(i).at(2);
-		xyz.at(i).at(0)=atan2(x,z);
-		xyz.at(i).at(1)=atan2(hypot(x,z),y);
 		xyz.at(i).at(2)=sqrt(pow(x,2) + pow(y,2) + pow(z,2));
+		xyz.at(i).at(0)=atan2(x,z);
+		xyz.at(i).at(1)=acos(y/xyz.at(i).at(2));
+
 	}
 	return xyz;
 }
@@ -163,4 +186,25 @@ std::vector<std::vector<double> > pubHandler::_extractPointsFromCloud(pcl::Point
 		points.push_back(temp);
 	}
 	return points;
+}
+
+std::vector<pubHandler::sector> pubHandler::_sectorize(std::vector<std::vector<double> > aer){
+	std::vector<pubHandler::sector> sectors;
+	for(int i = 0; i< aer.size();i++){
+		sector tempSector;
+		double a=aer.at(i).at(0);
+		double e=aer.at(i).at(1);
+		double r=aer.at(i).at(2);
+		if(a<0){
+			a += 2*M_PI;
+		}
+		if(e<0){
+			e += 2*M_PI;
+		}
+		tempSector.a=int(floor(a*(_HREZ/2*M_PI)));
+		tempSector.e=int(floor(e*(_VREZ/M_PI)));
+		tempSector.r = r;
+		sectors.push_back(tempSector);
+	}
+	return sectors;
 }

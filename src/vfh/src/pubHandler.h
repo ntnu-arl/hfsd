@@ -27,7 +27,8 @@
 #include "opencv2/core/mat.hpp"
 #include <iostream>
 #include "trajectory.h"
-
+//#include "sector.h"
+using namespace std;
 class pubHandler{
 public:
 	pubHandler(ros::NodeHandle n, const std::string& s, int num);
@@ -37,6 +38,12 @@ public:
 	Eigen::Quaterniond differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end);
 	Eigen::Vector3d differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end);
 	//pcl::PointCloud<pcl::PointXYZ>::ConstPtr& getData();
+	/* Public Struct*/
+	struct sector{
+		int a;
+		int e;
+		double r;
+	};
 
 private:
 	/* Private Variables*/
@@ -46,14 +53,15 @@ private:
 	std::deque<nav_msgs::Odometry> _odomWindow;
 	int _queueSize;
 	int _count;
-	int _HREZ;
-	int _VREZ;
+	const static int _HREZ = 180;
+	const static int _VREZ = 90;
 	/*Private Functions*/
-	std::vector<std::vector<double> > _convertToSphereical(std::vector<std::vector<double> > xyz);
+	std::vector<std::vector<double> > _convertToSpherical(std::vector<std::vector<double> > xyz);
 	std::vector<std::vector<double> > _convertToCartesian(std::vector<std::vector<double> > aer);
+	std::vector<sector> _sectorize(std::vector<std::vector<double> > aer);
 	std::vector<std::vector<double> > _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	std::map<std::string,std::vector<trajectory> > _vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-	cv::Mat _radmatrix(pcl::PointCloud<pcl::PointXYZ>);
+	cv::Mat _radmatrix(std::vector<sector> points);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
 
