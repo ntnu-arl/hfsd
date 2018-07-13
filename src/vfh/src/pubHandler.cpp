@@ -12,6 +12,8 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pub = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_queueSize = 7;
 	_count = 2;
+	_HREZ = 180;
+	_VREZ =15;
 }
 
 //used to publish data from the publisher and check for errors
@@ -100,13 +102,65 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	sor.setInputCloud(ptCloudScene);
 	sor.setLeafSize (0.075f, 0.075f, 0.075f);
 	sor.filter(*ptCloudSceneFiltered);
+	//*ptCloudSceneFiltered->points[1].data;
 	ROS_INFO("SUCCESS");
 	return *ptCloudSceneFiltered;
 }
 
+cv::Mat pubHandler::_radmatrix(pcl::PointCloud<pcl::PointXYZ>){
+	cv::Mat radmat(_HREZ, _VREZ,CV_8UC1, cv::Scalar(1));
+	int tempMat[_HREZ][_VREZ];
+
+	//TODO: Write the sectorization Methods
+	//TODO: Write Intensity value matrix in mat form
+	return radmat;
+}
 //this is the primary algorithm used to determine the best vectors for travel
-std::map<std::string,std::vector<trajectory> > pubHandler::_vfh3D(){
+std::map<std::string,std::vector<trajectory> > pubHandler::_vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
 	std::map<std::string,std::vector<trajectory> > trajVec;
+
+	//TODO process radmatrix into binary matrix using opencv's gaussian adaptive threshold
+	//TODO Find Centroids of binary matrix regions.
+	//TODO Classify the trajectory vectors in the map
 	return trajVec;
 
+}
+std::vector<std::vector<double> > pubHandler::_convertToSphereical(std::vector<std::vector<double> > xyz){
+	//TODO::convert vector of n rows and three columns from cartesian to spherical
+	for(int i = 0; i< xyz.size();i++){
+		double x=xyz.at(i).at(0);
+		double y=xyz.at(i).at(1);
+		double z=xyz.at(i).at(2);
+		xyz.at(i).at(0)=atan2(x,z);
+		xyz.at(i).at(1)=atan2(hypot(x,z),y);
+		xyz.at(i).at(2)=sqrt(pow(x,2) + pow(y,2) + pow(z,2));
+	}
+	return xyz;
+}
+
+std::vector<std::vector<double> > pubHandler::_convertToCartesian(std::vector<std::vector<double> > aer){
+		//TODO::convert vector of n rows and three columns from cartesian to spherical
+	for(int i = 0; i< aer.size();i++){
+		double a=aer.at(i).at(0);
+		double e=aer.at(i).at(1);
+		double r=aer.at(i).at(2);
+		aer.at(i).at(0)=r*sin(e)*cos(a);
+		aer.at(i).at(1)=r*sin(e)*sin(a);
+		aer.at(i).at(2)=r*cos(e);
+	}
+	return aer;
+
+}
+std::vector<std::vector<double> > pubHandler::_extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+	//TODO: get vector nx3 vector of XYZ coordinates from point cloud
+	std::vector<std::vector<double> > points;
+
+	for(int i = 0; i<cloud->size();i++){
+		std::vector<double> temp;
+		temp.push_back(cloud->points[i].x);
+		temp.push_back(cloud->points[i].y);
+		temp.push_back(cloud->points[i].z);
+		points.push_back(temp);
+	}
+	return points;
 }

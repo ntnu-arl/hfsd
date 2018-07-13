@@ -23,7 +23,8 @@
 #include <pcl_ros/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-
+#include "opencv2/core/core_c.h"
+#include "opencv2/core/mat.hpp"
 #include <iostream>
 #include "trajectory.h"
 
@@ -45,8 +46,14 @@ private:
 	std::deque<nav_msgs::Odometry> _odomWindow;
 	int _queueSize;
 	int _count;
+	int _HREZ;
+	int _VREZ;
 	/*Private Functions*/
-	std::map<std::string,std::vector<trajectory> > _vfh3D();
+	std::vector<std::vector<double> > _convertToSphereical(std::vector<std::vector<double> > xyz);
+	std::vector<std::vector<double> > _convertToCartesian(std::vector<std::vector<double> > aer);
+	std::vector<std::vector<double> > _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	std::map<std::string,std::vector<trajectory> > _vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	cv::Mat _radmatrix(pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
 
