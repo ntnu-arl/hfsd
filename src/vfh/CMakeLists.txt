@@ -20,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(PCL REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 3 REQUIRED)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -165,7 +165,8 @@ add_executable(VFH3D src/VFH3D.cpp)
 # )
 target_link_libraries(VFH3D
  ${catkin_LIBRARIES}
-${PCL_LIBRARIES}
+ ${PCL_LIBRARIES}
+ ${OpenCV_LIBRARIES}
 )
 
 #############

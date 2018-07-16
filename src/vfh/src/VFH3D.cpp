@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
 	uint32_t queue_size = 5;
 	pubHandler handler = pubHandler(n,"vfh", 100);
 	ros::Subscriber sub = n.subscribe<pcl::PointCloud<pcl::PointXYZ> >(topic,queue_size,&pubHandler::messageReceivedCloud, &handler);
-	ros::Subscriber subod = n.subscribe<nav_msgs::Odometry>("aft_mapped_to_init_CORRECTED",queue_size,&pubHandler::messageReceivedPose, &handler);
+	ros::Subscriber subod = n.subscribe<nav_msgs::Odometry>("integrated_to_init_CORRECTED",queue_size,&pubHandler::messageReceivedPose, &handler);
 	ros::spin();
 	return 0;
 }
