@@ -83,6 +83,9 @@ private:
 	double _areaRestricter;
 	int _skipCounter;
 	double _voxelSize;
+	double _voxelUniformSize;
+	double _splitter;
+	double _rejection;
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
 	std::chrono::duration<double, std::milli> _averageAlgorithm;
@@ -101,7 +104,7 @@ private:
 	std::vector<std::vector<double> > _convertToSpherical(std::vector<std::vector<double> > xyz);
 	std::vector<double> _convertToCartesian(std::vector<double> aer);
 	std::vector<sector> _sectorize(std::vector<std::vector<double> > aer);
-	std::vector<std::vector<double> > _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	std::vector<pubHandler::sector> _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	std::map<std::string,std::vector<trajectory> > _vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	cv::Mat _radmatrix(std::vector<sector> points);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);

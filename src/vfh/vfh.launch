@@ -1,11 +1,14 @@
 <launch>
-  <param name="HREZ" value="120" type="int"/>
+  <param name="HREZ" value="180" type="int"/>
   <param name="VREZ" value="10" type="int"/>
-  <param name="areaRestricter" value="20.0" type="double"/>
-  <param name="queueSize" value="5" type="int"/>
-  <param name="skipFrames" value="4" type="int"/>
-  <param name="voxelSize" value="0.06" type="double"/>
+  <param name="areaRestricter" value="65.0" type="double"/>
+  <param name="queueSize" value="100" type="int"/>
+  <param name="skipFrames" value="1" type="int"/>
+  <param name="voxelSize" value="0.2" type="double"/>
+  <param name="voxelUniformSize" value="0.075" type="double"/>
   <param name="showTiming" value="true" type="bool"/>
   <param name="showDebugMessages" value="false" type="bool"/>
+  <param name="heightSplitter" value="25.0" type="double"/>
+  <param name="minDistRejFilterVal" value="0.5" type="double"/>
   <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen" />
 </launch>
