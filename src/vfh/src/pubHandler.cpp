@@ -85,12 +85,6 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 		ROS_INFO("ERROR: REJECTION FILTER SET INCORRECTLY. SETTING TO DEFAULT");
 		_rejection =0.0;
 	}
-	//_queueSize = 7;
-	//_HREZ = 90;
-	//_VREZ = 10;
-	//_areaRestricter = 10.0;
-	//_HREZ = 180;
-	//_VREZ =90;
 }
 
 //used to publish data from the publisher and check for errors
@@ -109,10 +103,6 @@ void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::Cons
 	pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>(*msg));
 	_data = temp;
 	_good = 1;
-	//ROS_INFO("Check 2");
-
-	//ROS_INFO("Check 3");
-	//ROS_INFO("Check 4");
 }
 
 //this recieves the odometry for the program to create the sliding window
@@ -145,11 +135,8 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		stringstream s1;
 		s1<<"QUEUEING TIME: " << queueTime.count() << " milliseconds "<<"AVERAGE QUEUEING TIME: "<<_averageQueueing.count()/_loops<<" milliseconds";
 		if(_timing)ROS_INFO_STREAM(s1.str());
-
-		//ROS_INFO("Check 2");
 		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow)));
 		_vfh3D(ptCloudScene);
-		//ROS_INFO("Check 3");
 		this->publish(ptCloudScene);
 		_count = 0;
 		std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
@@ -159,12 +146,10 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		s<<"EXECUTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXECUTION TIME: "<<_averageExecution.count()/_loops<<" milliseconds";
 		if(_timing)ROS_INFO_STREAM(s.str());
 		s.clear();
-		//delete s;
 		}else{
 			if(_debug)ROS_INFO("SKIPPING...");
 			_count++;
 		}
-	//ROS_INFO("Check 4");
 }
 
 //takes in two quaternions and gives back the quaternion that rotates from the starting quaternion to the next quaternion
@@ -183,62 +168,32 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	if(_debug)ROS_INFO("Preprocessing...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(*window[0]));
-
-
 	Eigen::Vector3d endV;
-
 	Eigen::Quaterniond endQ;
-	//Eigen::Quaterniond baseQ(-0.5,0.5,0.5,0.5);
-
 	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
 	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
-
-	/*
-	Eigen::Matrix3d m;
-	m(0,0) = 0;
-	m(0,1) = 1;
-	m(0,2) = 0;
-	m(1,0) = 0;
-	m(1,1) = 0;
-	m(1,2) = 1;
-	m(2,0) = 1;
-	m(2,1) = 0;
-	m(2,2) = 0;
-	*/
-	//endV = m*endV;
-	/*m = Eigen::AngleAxisd(-0.5*M_PI, Eigen::Vector3d::UnitZ()) *
-	    Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY()) *
-	    Eigen::AngleAxisd(-0.5*M_PI, Eigen::Vector3d::UnitX());*/
-	//endV = endV.transpose() * endQ.toRotationMatrix();
-	//string s = "W: " + to_string(endQ.w()) + "X: "+ to_string(endQ.x()) + "Y: "+ to_string(endQ.y())+ "Z: "+ to_string(endQ.z());
-	//ROS_INFO_STREAM(s);
 	for(int i = 1; i<_queueCurrentSize;i++){
 		Eigen::Vector3d startV;
 		Eigen::Quaterniond startQ;
 		tf2::fromMsg(odomWindow[i].pose.pose.position, startV);
 		tf2::fromMsg(odomWindow[i].pose.pose.orientation,startQ);
 		Eigen::Quaterniond differenceQ = differenceOfQuat(endQ,startQ);
-		//startV = m* startV;;
 		Eigen::Vector3d differenceV = differenceOfVec(startV,endV);
 		differenceV = differenceV.transpose() * endQ.toRotationMatrix();
 		Eigen::Affine3d affine1 = Eigen::Affine3d::Identity();;
-		//Eigen::Affine3d affine2 = Eigen::Affine3d::Identity();;
 		affine1.translation() << differenceV[0],differenceV[1],differenceV[2];
 		affine1.rotate(differenceQ.toRotationMatrix());
 		pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZ>);
+		//TODO: Time Transform and confirm if it is the biggest time taker
 		pcl::transformPointCloud(*window[i],*transformedCloud,affine1);
-		//pcl::transformPointCloud(*transformedCloud,*transformedCloud,affine2);
-
 		*ptCloudScene += *transformedCloud;
 	}
-	//string s1 = "Size: "+ to_string(ptCloudScene->points.size());
-	//ROS_INFO_STREAM(s1);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudSceneFiltered(new pcl::PointCloud<pcl::PointXYZ>);
+	//TODO: Time the voxel grid and ensure it is not taking absurd amounts of time
 	pcl::VoxelGrid<pcl::PointXYZ> sor;
 	sor.setInputCloud(ptCloudScene);
 	sor.setLeafSize (_voxelUniformSize, _voxelUniformSize, _voxelUniformSize);
 	sor.filter(*ptCloudSceneFiltered);
-	//*ptCloudSceneFiltered->points[1].data;
 	if(_debug)ROS_INFO("Preprocessing Complete");
 	std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> preprocessingTime(t_end-t_start);
@@ -250,10 +205,10 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 }
 
 cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
+	//TODO: Voting Matrix
 	if(_debug)ROS_INFO("Creating RadMatrix...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	cv::Mat radmat(2*_HREZ, _VREZ,CV_8UC1, cv::Scalar(0));
-	//double tempMat[_HREZ][_VREZ] = {0.0};
 	double** tempMat = new double* [_HREZ];
 	for(int i = 0; i<_HREZ;i++){
 		tempMat[i] = new double[_VREZ];
@@ -263,22 +218,8 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 			tempMat[i][j]= 0.0;
 		}
 	}
-	/*
-	double** wrappedMat = new double* [2*_HREZ];
-	for(int i = 0; i<2*_HREZ;i++){
-		wrappedMat[i] = new double[_VREZ];
-	}
-	for(int i = 0; i<_HREZ; i++){
-		for( int j = 0; j<_VREZ; j++){
-			wrappedMat[i][j]= 0.0;
-		}
-	}
-	*/
-
+	//TODO eliminate this loop and add it into extraction
 	for(int row = 0; row<points.size();row++){
-		//std_msgs::String s;
-		//string s = "Azimuth: " + to_string(points.at(row).a) + "Elevation: "+ to_string(points.at(row).e) + "Radius: "+ to_string(points.at(row).r);
-		//ROS_INFO_STREAM(s);//<<points[row];
 		int a = points.at(row).a;
 		int e = points.at(row).e;
 		double r = points.at(row).r;
@@ -288,7 +229,6 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 			}
 		}
 	}
-	//ROS_INFO("Check 1");
 	double max = 0;
 	for(int row = 0; row<_HREZ; row++){
 		for(int col = 0; col < _VREZ; col++){
@@ -298,49 +238,22 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 			}
 		}
 	}
-
-	//ROS_INFO("Check 2");
-	/*for(int row = 0; row<_HREZ; row++){
-		for(int col = 0; col < _VREZ; col++){
-			int val = tempMat[row][col];
-			tempMat[row][col] = 255.0*(val/max);
-		}
-	}*/
-	//double wrappedMat[2*_HREZ][_VREZ]= {0.0};
 	for(int row = _HREZ/2; row<_HREZ; row++){
 		for(int col = 0; col < _VREZ; col++){
 			radmat.at<uchar>(row-_HREZ/2,col) = (uchar)(255*tempMat[row][col]/max);
-			//int val = tempMat[row][col];
-			//wrappedMat[row - _HREZ/2][col] = val;
 		}
 	}
 	for(int row = 0; row<_HREZ; row++){
 		for(int col = 0; col < _VREZ; col++){
 			radmat.at<uchar>(row+_HREZ/2,col) = (uchar)(255*tempMat[row][col]/max);
-			//int val = tempMat[row][col];
-			//wrappedMat[row + _HREZ/2][col] = val;
 		}
 	}
 	for(int row = 0; row<_HREZ/2; row++){
 		for(int col = 0; col < _VREZ; col++){
 			radmat.at<uchar>(row+ 3*_HREZ/2,col) = (uchar)(255*tempMat[row][col]/max);
-			//int val = tempMat[row][col];
-			//wrappedMat[row + 3*_HREZ/2][col] = val;
 		}
 	}
-	//ROS_INFO("Check 3");
-	/*
-	for(int row = 0; row<2*_HREZ; row++){
-		for(int col = 0; col < _VREZ; col++){
-			radmat.at<uchar>(row,col) = (uchar)(wrappedMat[row][col]);
-		}
-	}*/
-	//delete[] wrappedMat;
 	delete[] tempMat;
-
-
-	//TODO: Write the sectorization Methods
-	//TODO: Write Intensity value matrix in mat form
 	if(_debug)ROS_INFO("RadMatrix Complete");
 	std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
@@ -356,18 +269,11 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	cv::RNG _rng(12345);
 	std::map<std::string,std::vector<trajectory> > trajVec;
-	//std::vector<std::vector<double> > points = _extractPointsFromCloud(cloud);
-	//points = _convertToSpherical(points);
 	std::vector<pubHandler::sector> sectors = _extractPointsFromCloud(cloud);
 	cv::Mat grayMat(_radmatrix(sectors));
-
-	//cv::GaussianBlur(grayMat,grayMat,cv::Size_<int>(3,5),3,5);
-	//ROS_INFO("Check 1");
 	cv::Mat binaryImage(2*_HREZ, _VREZ,CV_8UC1, cv::Scalar(0));
 	cv::threshold(grayMat, binaryImage, 0,255,cv::THRESH_BINARY|cv::THRESH_OTSU);
 	cv::dilate(binaryImage,binaryImage,Mat(),Point(-1,-1),2);
-	//cv::erode(binaryImage,binaryImage,Mat(),Point(-1,-1),2);
-	//cv::Mat cont(binaryImage);
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	cv::findContours( binaryImage.clone(), contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
@@ -412,6 +318,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 	vector<pubHandler::trajectory> trajectories;
 	Mat drawing = Mat::zeros( binaryImage.size(), CV_8UC3 );
 	for( size_t i = 0; i< contoursfiltered.size(); i++ ){
+		//TODO: Create a better system for coloring. more primary/secondary colors very bright.
 		Scalar color = Scalar( _rng.uniform(0, 255), _rng.uniform(0,255), _rng.uniform(0,255) );
 		drawContours( drawing, contoursfiltered, (int)i, color, FILLED, 8, hierarchy, 0, Point() );
 		vector<Point> cont = contoursfiltered[i];
@@ -424,58 +331,13 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 			maxMag = t.magnitude;
 		}
 		if(t.sectorY>=_HREZ/2 && t.sectorY<3*_HREZ/2){
-			/*
-			Rect bounding = boundingRect(cont);
-
-			int height = bounding.height;
-			if(height >= _splitter){
-				pubHandler::trajectory t1;
-				t1.sectorX = t.sectorX;
-				t1.sectorY = t.sectorY + height/3;
-				t1.magnitude = t.magnitude;
-				pubHandler::trajectory t2;
-				t2.sectorX = t.sectorX;
-				t2.sectorY = t.sectorY - height/3;
-				t2.magnitude = t.magnitude;
-				circle(drawing,Point_<int>(t.sectorX,t.sectorY + height/3),1, Scalar(255,0,0));
-				circle(drawing,Point_<int>(t.sectorX,t.sectorY - height/3),1, Scalar(255,0,0));
-				colors.push_back(color);
-				colors.push_back(color);
-				trajectories.push_back(t1);
-				trajectories.push_back(t2);
-				if(height>=_splitter*2){
-					circle(drawing,Point_<int>(t.sectorX,t.sectorY),1, Scalar(255,0,0));
-					colors.push_back(color);
-					trajectories.push_back(t);
-				}*/
-			//}else{
 				circle(drawing,Point_<int>(t.sectorX,t.sectorY),1, Scalar(255,0,0));
 				colors.push_back(color);
 				trajectories.push_back(t);
-			//}
 		}
-		//Rect bounding = boundingRect(cont);
 	}
 	std::chrono::high_resolution_clock::time_point t_end2 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> visTime1(t_end2-t_start2);
-	//ROS_INFO("Check 2");
-
-	/*for(int i = 0; i<contoursfiltered.size();i++){
-		vector<Point> cont = contoursfiltered[i];
-		Moments m = moments(cont);
-		pubHandler::trajectory t;
-		t.sectorX = m.m10/m.m00;
-		t.sectorY = m.m01/m.m00;
-		t.magnitude = contourArea(cont);
-		if(t.magnitude>maxMag){
-			maxMag = t.magnitude;
-		}
-		if(t.sectorY>=_HREZ/2 && t.sectorY<3*_HREZ/2){
-			circle(drawing,Point_<int>(t.sectorX,t.sectorY),1, Scalar(255,0,0));
-			trajectories.push_back(t);
-		}
-	}*/
-	//ROS_INFO("Check 3");
 	for(int i =0; i<trajectories.size();i++){
 		trajectories[i].sectorX = (trajectories[i].sectorX * (30/_VREZ)*(2*M_PI/360)) + 5*M_PI/12;
 		trajectories[i].sectorY = ((trajectories[i].sectorY -_HREZ/2) * (360/_HREZ)*(2*M_PI/360));
@@ -483,7 +345,6 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 		std::vector<double> aer = {trajectories[i].sectorY,trajectories[i].sectorX,trajectories[i].magnitude};
 		trajectories[i].xyz = _convertToCartesian(aer);
 	}
-	//ROS_INFO("Check 4");
 	std::chrono::high_resolution_clock::time_point t_start3 = std::chrono::high_resolution_clock::now();
 	visualization_msgs::MarkerArray deleter;
 	deleter.markers.resize(1);
@@ -526,10 +387,6 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 		markArray.markers[i].mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
 
 	}
-	//ROS_INFO("Check 5");
-	//cv::namedWindow( "Display window", cv::WINDOW_AUTOSIZE);
-	//ROS_INFO("Check 2");
-
 	sensor_msgs::ImagePtr msgC = cv_bridge::CvImage(std_msgs::Header(), "rgb8", drawing).toImageMsg();
 	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", grayMat).toImageMsg();
 	_vis_pub.publish(markArray);
@@ -538,10 +395,6 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 	std::chrono::high_resolution_clock::time_point t_end3 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> visTime2(t_end3-t_start3);
 	visTime2 += visTime1;
-	//cv::imshow("Display Window",grayMat.);
-	//TODO process radmatrix into binary matrix using opencv's gaussian adaptive threshold
-	//TODO Find Centroids of binary matrix regions.
-	//TODO Classify the trajectory vectors in the map
 	if(_debug)ROS_INFO("VFH Complete");
 	std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> algorithmTime(t_end-t_start);
@@ -557,51 +410,24 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 	return trajVec;
 
 }
-std::vector<std::vector<double> > pubHandler::_convertToSpherical(std::vector<std::vector<double> > xyz){
-	//TODO::convert vector of n rows and three columns from cartesian to spherical
-	if(_debug)ROS_INFO("Converting to Spherical...");
-	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
-	for(int i = 0; i< xyz.size();i++){
-		double x=xyz.at(i).at(0);
-		double y=xyz.at(i).at(1);
-		double z=xyz.at(i).at(2);
-		xyz.at(i).at(2)=sqrt(pow(x,2) + pow(y,2) + pow(z,2));
-		xyz.at(i).at(0)=atan2(y,x);
-		xyz.at(i).at(1)=acos(z/xyz.at(i).at(2));
-
-	}
-	if(_debug)ROS_INFO("Conversion Complete");
-	std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
-	_averageConversion += executionTime;
-	stringstream s;
-	s<<"SPHERICAL CONVERSION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE CONVERSION TIME: "<<_averageConversion.count()/_loops<<" milliseconds";
-	if(_timing)ROS_INFO_STREAM(s.str());
-	return xyz;
-}
 
 std::vector<double> pubHandler::_convertToCartesian(std::vector<double> aer){
-		//TODO::convert vector of n rows and three columns from cartesian to spherical
-	//for(int i = 0; i< aer.size();i++){
 		double a=aer.at(0);
 		double e=aer.at(1);
 		double r=aer.at(2);
 		aer.at(0)=r*sin(e)*cos(a);
 		aer.at(1)=r*sin(e)*sin(a);
 		aer.at(2)=r*cos(e);
-	//}
 	return aer;
 
 }
 std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
-	//TODO: get vector nx3 vector of XYZ coordinates from point cloud
 	if(_debug)ROS_INFO("Extracting Points...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	std::vector<pubHandler::sector> sectors;
 	sectors.reserve(cloud->width);
 	for(const pcl::PointXYZ& pt: cloud->points){
 		sector tempSector;
-	//for(int i = 0; i<cloud->size();i++){
 		std::vector<double> temp;
 		double x = pt.x;
 		double y = pt.y;
@@ -632,36 +458,5 @@ std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCl
 		s<<"EXTRACTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXTRACTION TIME: "<<_averageExtraction.count()/_loops<<" milliseconds";
 		ROS_INFO_STREAM(s.str());
 	}
-	return sectors;
-}
-
-std::vector<pubHandler::sector> pubHandler::_sectorize(std::vector<std::vector<double> > aer){
-	if(_debug)ROS_INFO("Sectorizing...");
-	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
-	std::vector<pubHandler::sector> sectors;
-	for(int i = 0; i< aer.size();i++){
-		sector tempSector;
-		double a=aer.at(i).at(0);
-		double e=aer.at(i).at(1);
-		double r=aer.at(i).at(2);
-		if(a<0){
-			a += 2*M_PI;
-		}
-		if(e<0){
-			e += M_PI;
-		}
-		e -= 5*M_PI/12;
-		tempSector.a=int(floor(a*(360/(2*M_PI)/(360/(_HREZ-0)))));
-		tempSector.e=int(floor(e*(360/(2*M_PI)/(30/(_VREZ-0)))));
-		tempSector.r = r;
-		sectors.push_back(tempSector);
-	}
-	if(_debug)ROS_INFO("Sectorizing Complete...");
-	std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
-	_averageSectorization += executionTime;
-	stringstream s;
-	s<<"SECTORING TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE SECTORING TIME: "<<_averageSectorization.count()/_loops<<" milliseconds";
-	if(_timing)ROS_INFO_STREAM(s.str());
 	return sectors;
 }
