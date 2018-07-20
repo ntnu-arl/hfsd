@@ -17,7 +17,6 @@
 int main(int argc, char** argv) {
 	ros::init(argc,argv,"vfh3d");
 	ros::NodeHandle n;
-	//ros::NodeHandle nh;
 	std::string topic = n.resolveName("velodyne_points");
 	uint32_t queue_size = 5;
 	pubHandler handler = pubHandler(n,"vfh", 100);

@@ -27,16 +27,13 @@
 #include <pcl_ros/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-//#include "opencv2/core/core_c.h"
 #include <opencv2/core/core.hpp>
 #include "opencv2/core/mat.hpp"
 #include <iostream>
 #include <string>
-//#include "trajectory.h"
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <opencv2/highgui/highgui.hpp>
-//#include "sector.h"
 #include <chrono>
 #include <sstream>
 #include <boost/foreach.hpp>
@@ -51,8 +48,7 @@ public:
 	void publish(pcl::PointCloud<pcl::PointXYZ>::Ptr msg);
 	Eigen::Quaterniond differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end);
 	Eigen::Vector3d differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end);
-	//pcl::PointCloud<pcl::PointXYZ>::ConstPtr& getData();
-	/* Public Struct*/
+	/* Public Structs*/
 	struct sector{
 		int a;
 		int e;
@@ -92,18 +88,13 @@ private:
 	std::chrono::duration<double, std::milli> _averageQueueing;
 	std::chrono::duration<double, std::milli> _averageVis;
 	std::chrono::duration<double, std::milli> _averageExtraction;
-	std::chrono::duration<double, std::milli> _averageSectorization;
-	std::chrono::duration<double, std::milli> _averageConversion;
 	std::chrono::duration<double, std::milli> _averageRad;
-
 	bool _debug;
 	bool _timing;
 	int _loops;
 
 	/*Private Functions*/
-	std::vector<std::vector<double> > _convertToSpherical(std::vector<std::vector<double> > xyz);
 	std::vector<double> _convertToCartesian(std::vector<double> aer);
-	std::vector<sector> _sectorize(std::vector<std::vector<double> > aer);
 	std::vector<pubHandler::sector> _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	std::map<std::string,std::vector<trajectory> > _vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	cv::Mat _radmatrix(std::vector<sector> points);
