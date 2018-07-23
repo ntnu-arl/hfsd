@@ -1,14 +1,41 @@
 <launch>
   <param name="HREZ" value="180" type="int"/>
-  <param name="VREZ" value="10" type="int"/>
-  <param name="areaRestricter" value="65.0" type="double"/>
-  <param name="queueSize" value="100" type="int"/>
-  <param name="skipFrames" value="1" type="int"/>
+  <param name="VREZ" value="90" type="int"/>
+
+  <param name="queueSize" value="15" type="int"/>
+  <param name="skipFrames" value="0" type="int"/>
+
+  <param name="areaRestricter" value="0" type="double"/>
+  <param name="heightSplitter" value="0" type="double"/>
+  <param name="minDistRejFilterVal" value="0" type="double"/>
   <param name="voxelSize" value="0.2" type="double"/>
+
+  <param name="uniformGrid" value="false" type="bool"/>
   <param name="voxelUniformSize" value="0.075" type="double"/>
+
+  <param name="box" value="false" type="bool"/>
+  <param name="boxSizeX" value="9" type="int"/>
+  <param name="boxSizeY" value="3" type="int"/>
+
+  <param name="blur" value="false" type="bool"/>
+  <param name="blurSizeX" value="3" type="int"/>
+  <param name="blurSizeY" value="1" type="int"/>
+  <param name="blurSigmaX" value="0" type="double"/>
+  <param name="blurSigmaY" value="0" type="double"/>
+
+  <param name="median" value="true" type="bool"/>
+  <param name="medianSize" value="3" type="int"/>
+
+  <param name="intensityOffset" value="-745.0" type="double"/>
+
+  <param name="dilate" value="true" type="bool"/>
+  <param name="dilationIterations" value="3" type="int"/>
+
+  <param name="erode" value="false" type="bool"/>
+  <param name="erosionIterations" value="1" type="int"/>
+
   <param name="showTiming" value="true" type="bool"/>
   <param name="showDebugMessages" value="false" type="bool"/>
-  <param name="heightSplitter" value="25.0" type="double"/>
-  <param name="minDistRejFilterVal" value="0.5" type="double"/>
+
   <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen" />
 </launch>

@@ -37,6 +37,7 @@
 #include <chrono>
 #include <sstream>
 #include <boost/foreach.hpp>
+#include <cmath>
 
 using namespace cv;
 using namespace std;
@@ -67,6 +68,7 @@ private:
 	ros::Publisher _vis_pub;
 	image_transport::Publisher _pubImage;
 	image_transport::Publisher _pubContours;
+	image_transport::Publisher _pubVote;
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
@@ -76,12 +78,22 @@ private:
 	int _count;
 	int _HREZ;
 	int _VREZ;
+	int _dIterations;
+	int _eIterations;
+	int _blurSizeY;
+	int _blurSizeX;
+	int _boxSizeY;
+	int _boxSizeX;
+	int _medianSize;
+	double _blurSigmaY;
 	double _areaRestricter;
+	double _blurSigmaX;
 	int _skipCounter;
 	double _voxelSize;
 	double _voxelUniformSize;
 	double _splitter;
 	double _rejection;
+	double _iOffset;
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
 	std::chrono::duration<double, std::milli> _averageAlgorithm;
@@ -89,8 +101,17 @@ private:
 	std::chrono::duration<double, std::milli> _averageVis;
 	std::chrono::duration<double, std::milli> _averageExtraction;
 	std::chrono::duration<double, std::milli> _averageRad;
+	std::chrono::duration<double, std::milli> _averageTransform;
+	std::chrono::duration<double, std::milli> _averageVoxel;
+	std::vector<Scalar> _colors;
 	bool _debug;
 	bool _timing;
+	bool _median;
+	bool _blur;
+	bool _box;
+	bool _dilate;
+	bool _erode;
+	bool _uniformGrid;
 	int _loops;
 
 	/*Private Functions*/
