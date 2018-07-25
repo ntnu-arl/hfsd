@@ -323,17 +323,13 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 	if(_debug)ROS_INFO("Creating RadMatrix...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	cv::Mat radmat(2*_AzRez, _ElRez,CV_8UC1, cv::Scalar(0));
-	//cv::Mat votemat(2*_AzRez, _ElRez,CV_8UC1, cv::Scalar(0));
 	double** tempMat = new double* [_AzRez];
-	//double** tempvoteMat = new double* [_AzRez];
 	for(int i = 0; i<_AzRez;i++){
 		tempMat[i] = new double[_ElRez];
-		//tempvoteMat[i] = new double[_ElRez];
 	}
 	for(int i = 0; i<_AzRez; i++){
 		for( int j = 0; j<_ElRez; j++){
 			tempMat[i][j]= 0.0;
-			//tempvoteMat[i][j]= 0.0;
 		}
 	}
 	for(int row = 0; row< points.size();row++){
@@ -341,54 +337,41 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 		int e = points.at(row).e;
 		double r = points.at(row).r;
 		if(e>= 0 && e < _ElRez){
-			//tempvoteMat[a][e]++;
 			if(r <tempMat[a][e]|| tempMat[a][e]<=0.04){
 				tempMat[a][e] = r;
 			}
 		}
 	}
 	double max = 0;
-	//double maxvote = 0;
 	for(int row = 0; row<_AzRez; row++){
 		for(int col = 0; col < _ElRez; col++){
 			int val = tempMat[row][col];
 			if(val<_rejection){
 				tempMat[row][col]=0;
 			}else{
-			//int valvote = tempvoteMat[row][col];
+
 				if(val>max){
 					max=val;
 				}
-				/*
-				if(valvote>maxvote){
-					maxvote = valvote;
-				}
-				*/
 			}
 		}
 	}
 	for(int row = _AzRez/2; row<_AzRez; row++){
 		for(int col = 0; col < _ElRez; col++){
 			radmat.at<uchar>(row-_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
-			//votemat.at<uchar>(row-_AzRez/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
 		}
 	}
 	for(int row = 0; row<_AzRez; row++){
 		for(int col = 0; col < _ElRez; col++){
 			radmat.at<uchar>(row+_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
-			//votemat.at<uchar>(row+_AzRez/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
 		}
 	}
 	for(int row = 0; row<_AzRez/2; row++){
 		for(int col = 0; col < _ElRez; col++){
 			radmat.at<uchar>(row+ 3*_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
-			//votemat.at<uchar>(row+ 3*_AzRez/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
 		}
 	}
 	delete[] tempMat;
-	//delete[] tempvoteMat;
-	//sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", votemat).toImageMsg();
-	//if(_pubVote.getNumSubscribers()>0)_pubVote.publish(msg);
 	if(_debug)ROS_INFO("RadMatrix Complete");
 	if(_timing){
 		std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
@@ -589,12 +572,10 @@ std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCl
 			if(e<0){
 				e += M_PI;
 			}
-
 			tempSector.a=int(a*aConverter);
 			tempSector.e=int(e*eConverter);
 			tempSector.r = r;
 			sectors.push_back(tempSector);
-
 
 	}
 	if(_debug)ROS_INFO("Points Extracted");
