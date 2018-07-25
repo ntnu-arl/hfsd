@@ -2,7 +2,7 @@
   <param name="HREZ" value="180" type="int"/>
   <param name="VREZ" value="90" type="int"/>
 
-  <param name="queueSize" value="15" type="int"/>
+  <param name="queueSize" value="25" type="int"/>
   <param name="skipFrames" value="0" type="int"/>
 
   <param name="areaRestricter" value="0" type="double"/>
@@ -36,6 +36,5 @@
 
   <param name="showTiming" value="true" type="bool"/>
   <param name="showDebugMessages" value="false" type="bool"/>
-
   <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen" />
 </launch>

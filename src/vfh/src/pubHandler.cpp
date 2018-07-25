@@ -10,7 +10,7 @@
 //using namespace std;
 //constructor for pubHandler class
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
-	_pub = n.advertise<sensor_msgs::PointCloud2>(s,num);
+	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker",0);
 	image_transport::ImageTransport it(n);
 	_pubImage = it.advertise("open/image", 1);
@@ -193,7 +193,7 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 //used to publish data from the publisher and check for errors
 void pubHandler::publish(pcl::PointCloud<pcl::PointXYZ>::Ptr msg){
 	try{
-		_pub.publish(*msg);
+		_pubPoints.publish(*msg);
 		if(_debug)ROS_INFO("Success");
 	}catch(...){
 		ROS_INFO("An error has occurred");
@@ -242,8 +242,11 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		}
 		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow)));
 		_vfh3D(ptCloudScene);
-		this->publish(ptCloudScene);
+		//ptCloudScene->header.stamp = ros::Time::now();
+		if(_pubPoints.getNumSubscribers()>0) _pubPoints.publish(*ptCloudScene);
+		//this->publish(ptCloudScene);
 		_count = 0;
+		_good=0;
 		if(_timing){
 			std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
@@ -279,8 +282,16 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	Eigen::Quaterniond endQ;
 	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
 	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
+	//Eigen::Affine3d affineframe = Eigen::Affine3d::Identity();;
+	//Eigen::Quaterniond fixedframeQ(0.5,0.5,-0.5,0.5);
+	//affineframe.rotate(fixedframeQ.toRotationMatrix());
+	//pcl::transformPointCloud(*window[0],*ptCloudScene,affineframe);
 	std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
 	for(int i = 1; i<_queueCurrentSize;i++){
+		//string s = "W: " + to_string(endQ.w()) + "X: "+ to_string(endQ.x()) + "Y: "+ to_string(endQ.y())+ "Z: "+ to_string(endQ.z());
+		//ROS_INFO_STREAM(s);
+		//pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloudstart(new pcl::PointCloud<pcl::PointXYZ>);
+
 		Eigen::Vector3d startV;
 		Eigen::Quaterniond startQ;
 		tf2::fromMsg(odomWindow[i].pose.pose.position, startV);
@@ -294,14 +305,16 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 		pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZ>);
 		//TODO: Time Transform and confirm if it is the biggest time taker
 		pcl::transformPointCloud(*window[i],*transformedCloud,affine1);
+		//pcl::transformPointCloud(*transformedCloudstart,*transformedCloud,affineframe);
 		*ptCloudScene += *transformedCloud;
 	}
 	std::chrono::high_resolution_clock::time_point t_end2 = std::chrono::high_resolution_clock::now();
 	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudSceneFiltered(new pcl::PointCloud<pcl::PointXYZ>);
 	//TODO: Time the voxel grid and ensure it is not taking absurd amounts of time
 	std::chrono::high_resolution_clock::time_point t_start3 = std::chrono::high_resolution_clock::now();
-	pcl::VoxelGrid<pcl::PointXYZ> sor;
+
 	if(_uniformGrid){
+		pcl::VoxelGrid<pcl::PointXYZ> sor;
 		sor.setInputCloud(ptCloudScene);
 		sor.setLeafSize (_voxelUniformSize, _voxelUniformSize, _voxelUniformSize);
 		sor.filter(*ptCloudSceneFiltered);

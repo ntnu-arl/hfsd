@@ -43,6 +43,7 @@ using namespace cv;
 using namespace std;
 class pubHandler{
 public:
+	/*Public Functions*/
 	pubHandler(ros::NodeHandle n, const std::string& s, int num);
 	void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg);
 	void messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg);
@@ -64,7 +65,7 @@ public:
 
 private:
 	/* Private Variables*/
-	ros::Publisher _pub;
+	ros::Publisher _pubPoints;
 	ros::Publisher _vis_pub;
 	image_transport::Publisher _pubImage;
 	image_transport::Publisher _pubContours;
@@ -85,15 +86,18 @@ private:
 	int _boxSizeY;
 	int _boxSizeX;
 	int _medianSize;
+	int _skipCounter;
+	int _loops;
+
 	double _blurSigmaY;
 	double _areaRestricter;
 	double _blurSigmaX;
-	int _skipCounter;
 	double _voxelSize;
 	double _voxelUniformSize;
 	double _splitter;
 	double _rejection;
 	double _iOffset;
+
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
 	std::chrono::duration<double, std::milli> _averageAlgorithm;
@@ -103,7 +107,9 @@ private:
 	std::chrono::duration<double, std::milli> _averageRad;
 	std::chrono::duration<double, std::milli> _averageTransform;
 	std::chrono::duration<double, std::milli> _averageVoxel;
+
 	std::vector<Scalar> _colors;
+
 	bool _debug;
 	bool _timing;
 	bool _median;
@@ -112,7 +118,7 @@ private:
 	bool _dilate;
 	bool _erode;
 	bool _uniformGrid;
-	int _loops;
+
 
 	/*Private Functions*/
 	std::vector<double> _convertToCartesian(std::vector<double> aer);

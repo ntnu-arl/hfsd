@@ -3,7 +3,8 @@
 // Author      : Ryan Fite - ryanfite@live.com
 // Version     : 1.0
 // Date Created: Jul 6, 2018
-// Description : Primary Node for the VFH3D algorithm.
+// Description : Initializer for the detection algorithm. Sets up the ROS
+//               subscribers and sets up the pubHandler object.
 //============================================================================
 
 
@@ -19,9 +20,9 @@ int main(int argc, char** argv) {
 	ros::NodeHandle n;
 	std::string topic = n.resolveName("velodyne_points");
 	uint32_t queue_size = 5;
-	pubHandler handler = pubHandler(n,"vfh", 100);
-	ros::Subscriber sub = n.subscribe<pcl::PointCloud<pcl::PointXYZ> >(topic,queue_size,&pubHandler::messageReceivedCloud, &handler);
-	ros::Subscriber subod = n.subscribe<nav_msgs::Odometry>("integrated_to_init_CORRECTED",queue_size,&pubHandler::messageReceivedPose, &handler);
+	pubHandler handler = pubHandler(n,"window_points", 100);
+	ros::Subscriber subPoints = n.subscribe<pcl::PointCloud<pcl::PointXYZ> >(topic,queue_size,&pubHandler::messageReceivedCloud, &handler);
+	ros::Subscriber subOdometry = n.subscribe<nav_msgs::Odometry>("integrated_to_init_CORRECTED",queue_size,&pubHandler::messageReceivedPose, &handler);
 	ros::spin();
 	return 0;
 }
