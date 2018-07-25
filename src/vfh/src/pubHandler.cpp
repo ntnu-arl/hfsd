@@ -3,12 +3,10 @@
 // Author      : Ryan Fite - ryanfite@live.com
 // Version     : 1.0
 // Date Created: Jul 6, 2018
-// Description :
+// Description : The bulk of the algorithm each function is commented.
 //============================================================================
 
 #include "pubHandler.h"
-//using namespace std;
-//constructor for pubHandler class
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker",0);
@@ -18,7 +16,7 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pubVote = it.advertise("open/vote", 1);
 	_queueCurrentSize = 0;
 	_count = 0;
-	_good = 0;
+	_alignmentSwitch = 0;
 	_loops =0;
 	_colors.push_back(Scalar(255,30,30));
 	_colors.push_back(Scalar(0,168,8));
@@ -26,17 +24,17 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
-	if(n.getParam("HREZ", _HREZ)){
+	if(n.getParam("HREZ", _AzRez)){
 		ROS_INFO("HORIZONTAL RESOLUTION SET CORRECTLY");
 	}else{
 		ROS_INFO("ERROR: HORIZONTAL RESOLUTION SET INCORRECTLY. SETTING TO DEFAULT");
-		_HREZ = 90;
+		_AzRez = 90;
 	}
-	if(n.getParam("VREZ", _VREZ)){
+	if(n.getParam("VREZ", _ElRez)){
 		ROS_INFO("VERTICAL RESOLUTION SET CORRECTLY");
 	}else{
 		ROS_INFO("ERROR: VERTICAL RESOLUTION SET INCORRECTLY. SETTING TO DEFAULT");
-		_VREZ = 10;
+		_ElRez = 10;
 	}
 	if(n.getParam("queueSize", _queueSize)){
 		ROS_INFO("QUEUE SIZE SET CORRECTLY");
@@ -190,27 +188,17 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	}
 }
 
-//used to publish data from the publisher and check for errors
-void pubHandler::publish(pcl::PointCloud<pcl::PointXYZ>::Ptr msg){
-	try{
-		_pubPoints.publish(*msg);
-		if(_debug)ROS_INFO("Success");
-	}catch(...){
-		ROS_INFO("An error has occurred");
-	}
-}
-
 //callback function for the subscriber. performs all of the enqueuing and dequeuing;
 void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg){
 	if(_debug)ROS_INFO("Recieving Cloud...");
 	pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>(*msg));
 	_data = temp;
-	_good = 1;
+	_alignmentSwitch = 1;
 }
 
 //this recieves the odometry for the program to create the sliding window
 void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
-	if(_count >= _skipCounter && _good == 1){
+	if(_count >= _skipCounter && _alignmentSwitch == 1){
 		std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 		_loops++;
 		stringstream lo;
@@ -241,12 +229,10 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 			ROS_INFO_STREAM(s1.str());
 		}
 		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow)));
-		_vfh3D(ptCloudScene);
-		//ptCloudScene->header.stamp = ros::Time::now();
+		_freeTrajectories(ptCloudScene);
 		if(_pubPoints.getNumSubscribers()>0) _pubPoints.publish(*ptCloudScene);
-		//this->publish(ptCloudScene);
 		_count = 0;
-		_good=0;
+		_alignmentSwitch=0;
 		if(_timing){
 			std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
@@ -282,16 +268,8 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	Eigen::Quaterniond endQ;
 	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
 	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
-	//Eigen::Affine3d affineframe = Eigen::Affine3d::Identity();;
-	//Eigen::Quaterniond fixedframeQ(0.5,0.5,-0.5,0.5);
-	//affineframe.rotate(fixedframeQ.toRotationMatrix());
-	//pcl::transformPointCloud(*window[0],*ptCloudScene,affineframe);
 	std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
 	for(int i = 1; i<_queueCurrentSize;i++){
-		//string s = "W: " + to_string(endQ.w()) + "X: "+ to_string(endQ.x()) + "Y: "+ to_string(endQ.y())+ "Z: "+ to_string(endQ.z());
-		//ROS_INFO_STREAM(s);
-		//pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloudstart(new pcl::PointCloud<pcl::PointXYZ>);
-
 		Eigen::Vector3d startV;
 		Eigen::Quaterniond startQ;
 		tf2::fromMsg(odomWindow[i].pose.pose.position, startV);
@@ -303,14 +281,11 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 		affine1.translation() << differenceV[0],differenceV[1],differenceV[2];
 		affine1.rotate(differenceQ.toRotationMatrix());
 		pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZ>);
-		//TODO: Time Transform and confirm if it is the biggest time taker
 		pcl::transformPointCloud(*window[i],*transformedCloud,affine1);
-		//pcl::transformPointCloud(*transformedCloudstart,*transformedCloud,affineframe);
 		*ptCloudScene += *transformedCloud;
 	}
 	std::chrono::high_resolution_clock::time_point t_end2 = std::chrono::high_resolution_clock::now();
 	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudSceneFiltered(new pcl::PointCloud<pcl::PointXYZ>);
-	//TODO: Time the voxel grid and ensure it is not taking absurd amounts of time
 	std::chrono::high_resolution_clock::time_point t_start3 = std::chrono::high_resolution_clock::now();
 
 	if(_uniformGrid){
@@ -347,71 +322,73 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 	if(_debug)ROS_INFO("Creating RadMatrix...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
-	cv::Mat radmat(2*_HREZ, _VREZ,CV_8UC1, cv::Scalar(0));
-	cv::Mat votemat(2*_HREZ, _VREZ,CV_8UC1, cv::Scalar(0));
-	double** tempMat = new double* [_HREZ];
-	double** tempvoteMat = new double* [_HREZ];
-	for(int i = 0; i<_HREZ;i++){
-		tempMat[i] = new double[_VREZ];
-		tempvoteMat[i] = new double[_VREZ];
+	cv::Mat radmat(2*_AzRez, _ElRez,CV_8UC1, cv::Scalar(0));
+	//cv::Mat votemat(2*_AzRez, _ElRez,CV_8UC1, cv::Scalar(0));
+	double** tempMat = new double* [_AzRez];
+	//double** tempvoteMat = new double* [_AzRez];
+	for(int i = 0; i<_AzRez;i++){
+		tempMat[i] = new double[_ElRez];
+		//tempvoteMat[i] = new double[_ElRez];
 	}
-	for(int i = 0; i<_HREZ; i++){
-		for( int j = 0; j<_VREZ; j++){
+	for(int i = 0; i<_AzRez; i++){
+		for( int j = 0; j<_ElRez; j++){
 			tempMat[i][j]= 0.0;
-			tempvoteMat[i][j]= 0.0;
+			//tempvoteMat[i][j]= 0.0;
 		}
 	}
 	for(int row = 0; row< points.size();row++){
 		int a = points.at(row).a;
 		int e = points.at(row).e;
 		double r = points.at(row).r;
-		if(e>= 0 && e < _VREZ){
-			tempvoteMat[a][e]++;
+		if(e>= 0 && e < _ElRez){
+			//tempvoteMat[a][e]++;
 			if(r <tempMat[a][e]|| tempMat[a][e]<=0.04){
 				tempMat[a][e] = r;
 			}
 		}
 	}
 	double max = 0;
-	double maxvote = 0;
-	for(int row = 0; row<_HREZ; row++){
-		for(int col = 0; col < _VREZ; col++){
+	//double maxvote = 0;
+	for(int row = 0; row<_AzRez; row++){
+		for(int col = 0; col < _ElRez; col++){
 			int val = tempMat[row][col];
 			if(val<_rejection){
 				tempMat[row][col]=0;
-				val = 0;
-			}
-			int valvote = tempvoteMat[row][col];
-			if(val>max){
-				max=val;
-			}
-			if(valvote>maxvote){
-				maxvote = valvote;
+			}else{
+			//int valvote = tempvoteMat[row][col];
+				if(val>max){
+					max=val;
+				}
+				/*
+				if(valvote>maxvote){
+					maxvote = valvote;
+				}
+				*/
 			}
 		}
 	}
-	for(int row = _HREZ/2; row<_HREZ; row++){
-		for(int col = 0; col < _VREZ; col++){
-			radmat.at<uchar>(row-_HREZ/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
-			votemat.at<uchar>(row-_HREZ/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
+	for(int row = _AzRez/2; row<_AzRez; row++){
+		for(int col = 0; col < _ElRez; col++){
+			radmat.at<uchar>(row-_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
+			//votemat.at<uchar>(row-_AzRez/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
 		}
 	}
-	for(int row = 0; row<_HREZ; row++){
-		for(int col = 0; col < _VREZ; col++){
-			radmat.at<uchar>(row+_HREZ/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
-			votemat.at<uchar>(row+_HREZ/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
+	for(int row = 0; row<_AzRez; row++){
+		for(int col = 0; col < _ElRez; col++){
+			radmat.at<uchar>(row+_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
+			//votemat.at<uchar>(row+_AzRez/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
 		}
 	}
-	for(int row = 0; row<_HREZ/2; row++){
-		for(int col = 0; col < _VREZ; col++){
-			radmat.at<uchar>(row+ 3*_HREZ/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
-			votemat.at<uchar>(row+ 3*_HREZ/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
+	for(int row = 0; row<_AzRez/2; row++){
+		for(int col = 0; col < _ElRez; col++){
+			radmat.at<uchar>(row+ 3*_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
+			//votemat.at<uchar>(row+ 3*_AzRez/2,col) = (uchar)((255-_iOffset)*(1-tempvoteMat[row][col]/maxvote));
 		}
 	}
 	delete[] tempMat;
-	delete[] tempvoteMat;
-	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", votemat).toImageMsg();
-	if(_pubVote.getNumSubscribers()>0)_pubVote.publish(msg);
+	//delete[] tempvoteMat;
+	//sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", votemat).toImageMsg();
+	//if(_pubVote.getNumSubscribers()>0)_pubVote.publish(msg);
 	if(_debug)ROS_INFO("RadMatrix Complete");
 	if(_timing){
 		std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
@@ -424,14 +401,14 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 	return radmat;
 }
 //this is the primary algorithm used to determine the best vectors for travel
-std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
 	if(_debug)ROS_INFO("Beginning VFH...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	cv::RNG _rng(12345);
 	std::map<std::string,std::vector<trajectory> > trajVec;
 	std::vector<pubHandler::sector> sectors = _extractPointsFromCloud(cloud);
 	cv::Mat grayMat(_radmatrix(sectors));
-	cv::Mat binaryImage(2*_HREZ, _VREZ,CV_8UC1, cv::Scalar(0));
+	cv::Mat binaryImage(2*_AzRez, _ElRez,CV_8UC1, cv::Scalar(0));
 	if(_box)cv::blur(grayMat.clone(),grayMat,cv::Size(_boxSizeX,_boxSizeY));
 	if(_blur)cv::GaussianBlur(grayMat.clone(),grayMat,cv::Size(_blurSizeX,_blurSizeY),_blurSigmaX,_blurSigmaY);
 	if(_median)cv::medianBlur(grayMat.clone(),grayMat,_medianSize);
@@ -439,14 +416,9 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 	if(_dilate)cv::dilate(grayMat.clone(),grayMat,Mat(),Point(-1,-1),_dIterations);
 	cv::threshold(grayMat.clone(), binaryImage,0,255,cv::THRESH_BINARY|cv::THRESH_OTSU);
 
-	//cv::adaptiveThreshold(grayMat, binaryImage,255,cv::ADAPTIVE_THRESH_GAUSSIAN_C,cv::THRESH_BINARY,_threshBlockSize,_threshOffset);
-	//if(_dilate)cv::dilate(binaryImage,binaryImage,Mat(),Point(-1,-1),_dIterations);
-	//if(_erode)cv::erode(binaryImage,binaryImage,Mat(),Point(-1,-1),_eIterations);
 	vector<vector<Point> > contours;
-
 	cv::findContours( binaryImage.clone(), contours, RETR_LIST, CHAIN_APPROX_NONE, Point(0, 0) );
 	vector<vector<Point> > contoursfiltered;
-
 	vector<Rect> rois;
 	for(int i = 0; i<contours.size(); i++){
 		vector<Point> cont = contours[i];
@@ -494,7 +466,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 		if(t.magnitude>maxMag){
 			maxMag = t.magnitude;
 		}
-		if(t.sectorY>=_HREZ/2 && t.sectorY<3*_HREZ/2){
+		if(t.sectorY>=_AzRez/2 && t.sectorY<3*_AzRez/2){
 				Scalar color;
 				if(colors.size()<_colors.size()){
 					color = _colors[colors.size()];
@@ -512,10 +484,8 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_vfh3D(pc
 		std::chrono::duration<double, std::milli> visTime1(t_end2-t_start2);
 
 	for(int i =0; i<trajectories.size();i++){
-		//trajectories[i].sectorX = (trajectories[i].sectorX * (30/_VREZ)*(2*M_PI/360) + 5*M_PI/12);
-		//trajectories[i].sectorX = (trajectories[i].sectorX * (60/_VREZ)*(2*M_PI/360) + M_PI/3);
-		trajectories[i].sectorX = (trajectories[i].sectorX * (180/_VREZ)*(2*M_PI/360));
-		trajectories[i].sectorY = ((trajectories[i].sectorY -_HREZ/2) * (360/_HREZ)*(2*M_PI/360));
+		trajectories[i].sectorX = (trajectories[i].sectorX * (180/_ElRez)*(2*M_PI/360));
+		trajectories[i].sectorY = ((trajectories[i].sectorY -_AzRez/2) * (360/_AzRez)*(2*M_PI/360));
 		trajectories[i].magnitude *=2/maxMag;
 		std::vector<double> aer = {trajectories[i].sectorY,trajectories[i].sectorX,trajectories[i].magnitude};
 		trajectories[i].xyz = _convertToCartesian(aer);
@@ -602,32 +572,30 @@ std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCl
 	if(_debug)ROS_INFO("Extracting Points...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	std::vector<pubHandler::sector> sectors;
-	//sectors.reserve(cloud->width);
+	double aConverter = (360/(2*M_PI)/(360/(_AzRez-0)));
+	double eConverter = (360/(2*M_PI)/(180/(_ElRez-0)));
+	sectors.reserve(cloud->points.size());
+	sector tempSector;
 	for(const pcl::PointXYZ& pt: cloud->points){
-		sector tempSector;
-		std::vector<double> temp;
 		double x = pt.x;
 		double y = pt.y;
 		double z = pt.z;
-		double r = sqrt(pow(x,2) + pow(y,2) + pow(z,2));
-		//if(r >= _rejection){
-			double a = atan2(y,x);
-			double e = acos(z/r);
+		double r = sqrt(x*x + y*y + z*z);
+		double a = atan2(y,x);
+		double e = acos(z/r);
 			if(a<0){
 				a += 2*M_PI;
 			}
 			if(e<0){
 				e += M_PI;
 			}
-			//e -= 5*M_PI/12;
-			//e -= M_PI/3;
-			tempSector.a=int(floor(a*(360/(2*M_PI)/(360/(_HREZ-0)))));
-			//tempSector.e=int(floor(e*(360/(2*M_PI)/(30/(_VREZ-0)))));
-			//tempSector.e=int(floor(e*(360/(2*M_PI)/(60/(_VREZ-0)))));
-			tempSector.e=int(floor(e*(360/(2*M_PI)/(180/(_VREZ-0)))));
+
+			tempSector.a=int(a*aConverter);
+			tempSector.e=int(e*eConverter);
 			tempSector.r = r;
 			sectors.push_back(tempSector);
-		//}
+
+
 	}
 	if(_debug)ROS_INFO("Points Extracted");
 	if(_timing){

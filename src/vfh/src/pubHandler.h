@@ -47,7 +47,6 @@ public:
 	pubHandler(ros::NodeHandle n, const std::string& s, int num);
 	void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg);
 	void messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg);
-	void publish(pcl::PointCloud<pcl::PointXYZ>::Ptr msg);
 	Eigen::Quaterniond differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end);
 	Eigen::Vector3d differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end);
 	/* Public Structs*/
@@ -73,12 +72,12 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
-	int _good;
+	int _alignmentSwitch;
 	int _queueSize;
 	int _queueCurrentSize;
 	int _count;
-	int _HREZ;
-	int _VREZ;
+	int _AzRez;
+	int _ElRez;
 	int _dIterations;
 	int _eIterations;
 	int _blurSizeY;
@@ -123,7 +122,7 @@ private:
 	/*Private Functions*/
 	std::vector<double> _convertToCartesian(std::vector<double> aer);
 	std::vector<pubHandler::sector> _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-	std::map<std::string,std::vector<trajectory> > _vfh3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
+	std::map<std::string,std::vector<trajectory> > _freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	cv::Mat _radmatrix(std::vector<sector> points);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
