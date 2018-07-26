@@ -24,6 +24,7 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
+	_tfListener(_tfBuffer);
 	if(n.getParam("HREZ", _AzRez)){
 		ROS_INFO("HORIZONTAL RESOLUTION SET CORRECTLY");
 	}else{
@@ -199,7 +200,6 @@ void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::Cons
 //this recieves the odometry for the program to create the sliding window
 void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 	if(_count >= _skipCounter && _alignmentSwitch == 1){
-		std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 		_loops++;
 		stringstream lo;
 		lo<<"CURRENT LOOP: "<<_loops;
@@ -235,7 +235,7 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		_alignmentSwitch=0;
 		if(_timing){
 			std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
+			std::chrono::duration<double, std::milli> executionTime(t_end-t_start2);
 			_averageExecution += executionTime;
 			stringstream s;
 			s<<"EXECUTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXECUTION TIME: "<<_averageExecution.count()/_loops<<" milliseconds";
@@ -258,7 +258,20 @@ Eigen::Vector3d pubHandler::differenceOfVec(Eigen::Vector3d start, Eigen::Vector
 	return difference;
 }
 
+pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessingNew(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, std::deque<nav_msgs::Odometry> odomWindow){
+	if(_debug)ROS_INFO("Preprocessing...");
+	std::chrono::high_resolution_clock::time_point t_start1 = std::chrono::high_resolution_clock::now();
+	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(*window[0]));
+	Eigen::Vector3d endV;
+	Eigen::Quaterniond endQ;
+	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
+	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
+	//TODO: Broadcast the current pose
+	//TODO: recieve transforms between current pose and all frames in window
+	//TODO: use static transform to convert the poses to the correct frame.
 
+	return *ptCloudScene;
+}
 //this is the pre-processing step that transforms and filters the point cloud queue
 pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, std::deque<nav_msgs::Odometry> odomWindow){
 	if(_debug)ROS_INFO("Preprocessing...");
@@ -555,8 +568,8 @@ std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCl
 	if(_debug)ROS_INFO("Extracting Points...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	std::vector<pubHandler::sector> sectors;
-	double aConverter = (360/(2*M_PI)/(360/(_AzRez-0)));
-	double eConverter = (360/(2*M_PI)/(180/(_ElRez-0)));
+	static double aConverter = (360/(2*M_PI)/(360/(_AzRez-0)));
+	static double eConverter = (360/(2*M_PI)/(180/(_ElRez-0)));
 	sectors.reserve(cloud->points.size());
 	sector tempSector;
 	for(const pcl::PointXYZ& pt: cloud->points){

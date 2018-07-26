@@ -36,5 +36,19 @@
 
   <param name="showTiming" value="true" type="bool"/>
   <param name="showDebugMessages" value="false" type="bool"/>
+
+  <node name="dep_drop" pkg="topic_tools" type="drop" output="screen" args="/camera/depth/image 2 3 /camera/depth/image_drop"/>
+  <node name="info_drop" pkg="topic_tools" type="drop" output="screen" args="/camera/depth/camera_info 2 3 /camera/depth/camera_info_drop"/>
+  <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager"/>
+
+  <node pkg="nodelet" type="nodelet" name="Proc"
+        args="load depth_image_proc/point_cloud_xyz standalone_nodelet">
+    <remap from="/image_rect" to="/camera/depth/image_drop"/>
+    <remap from="/camera_info" to="/camera/depth/camera_info_drop"/>
+  </node>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="camera_to_velodyne" args="0 0 0 0.5 0.5 0.5 -0.5 /camera_init /velodyne" 
+  </node>
+
   <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen" />
 </launch>

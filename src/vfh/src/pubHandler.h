@@ -72,6 +72,8 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
+	tf2_ros::Buffer _tfBuffer;
+	tf2_ros::TransformListener _tfListener;
 	int _alignmentSwitch;
 	int _queueSize;
 	int _queueCurrentSize;
@@ -125,6 +127,7 @@ private:
 	std::map<std::string,std::vector<trajectory> > _freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	cv::Mat _radmatrix(std::vector<sector> points);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
+	pcl::PointCloud<pcl::PointXYZ> _preprocessingNew(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
 
 #endif /* PUBHANDLER_H_ */
