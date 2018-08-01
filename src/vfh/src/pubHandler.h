@@ -42,6 +42,7 @@
 #include <sstream>
 #include <boost/foreach.hpp>
 #include <cmath>
+#include "tf2_ros/transform_broadcaster.h"
 
 
 using namespace cv;
@@ -70,6 +71,7 @@ public:
 private:
 	/* Private Variables*/
 	ros::Publisher _pubPoints;
+	ros::Publisher _pubOdometry;
 	ros::Publisher _vis_pub;
 	image_transport::Publisher _pubImage;
 	image_transport::Publisher _pubContours;
@@ -94,6 +96,11 @@ private:
 	int _medianSize;
 	int _skipCounter;
 	int _loops;
+
+	Eigen::Vector3d _CurrentV;
+	Eigen::Vector3d _initV;
+	Eigen::Quaterniond _CurrentQ;
+	Eigen::Quaterniond _initQ;
 
 	double _blurSigmaY;
 	double _areaRestricter;
@@ -125,6 +132,9 @@ private:
 	bool _erode;
 	bool _uniformGrid;
 
+	int _markerSkip;
+
+	tf2_ros::TransformBroadcaster tfb;
 
 	/*Private Functions*/
 	std::vector<double> _convertToCartesian(std::vector<double> aer);

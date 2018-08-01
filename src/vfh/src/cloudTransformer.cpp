@@ -25,31 +25,30 @@
 #include "tf2_eigen/tf2_eigen.h"
 #include <ros/callback_queue.h>
 using namespace std;
-string body;
+string base_frame = "base_link";
 ros::Publisher pubPoints;
 geometry_msgs::TransformStamped transformStamped;
 void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg){
 	pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>(*msg));
 	Eigen::Affine3d affine = tf2::transformToEigen(transformStamped);
 	pcl::transformPointCloud(*temp,*temp,affine);
-	temp->header.frame_id = body;
+	temp->header.frame_id = base_frame;
 	pubPoints.publish(*temp);
 }
 
 int main(int argc, char** argv){
-  ros::init(argc, argv, "my_tf2_listener");
+  ros::init(argc, argv, "cloudTransformer");
   std::string topicPoints;
-	if(ros::param::get("CloudInput", topicPoints)){
-		ROS_INFO("CLOUD INPUT SET CORRECTLY");
-	}else{
-		ROS_INFO("ERROR: CLOUD INPUT SET INCORRECTLY. SETTING TO DEFAULT");
-		topicPoints = "stereo_vision";
-	}
-  body = argv[1];
-  string state = argv[2];
 
-  ros::NodeHandle node;
-  ros::Subscriber subPoints = node.subscribe<pcl::PointCloud<pcl::PointXYZ> >(topicPoints,10,&messageReceivedCloud);
+
+  string sensor_frame = "camera";
+
+
+  ros::NodeHandle node("cloudTransformer");
+
+  node.param("sensor_frame",sensor_frame,sensor_frame);
+  node.param("base_link",base_frame,base_frame);
+  ros::Subscriber subPoints = node.subscribe<pcl::PointCloud<pcl::PointXYZ> >("inputcloud",10,&messageReceivedCloud);
   pubPoints = node.advertise<sensor_msgs::PointCloud2 >("points", 10);
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener tfListener(tfBuffer);
@@ -58,7 +57,7 @@ int main(int argc, char** argv){
   while (node.ok()){
 
     try{
-      transformStamped = tfBuffer.lookupTransform(body, state,
+      transformStamped = tfBuffer.lookupTransform(base_frame, sensor_frame,
                                ros::Time(0));
 
     }

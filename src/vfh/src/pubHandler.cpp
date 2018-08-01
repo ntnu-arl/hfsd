@@ -9,6 +9,7 @@
 #include "pubHandler.h"
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
+	_pubOdometry = n.advertise<nav_msgs::Odometry>("OdomOut",num);
 	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker",0);
 	image_transport::ImageTransport it(n);
 	_pubImage = it.advertise("open/image", 1);
@@ -24,6 +25,8 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
+
+	n.param("markerSkip",_markerSkip,0);
 	//_tfListener=new tf2_ros::TransformListener(_tfBuffer);
 	if(n.getParam("HREZ", _AzRez)){
 		ROS_INFO("HORIZONTAL RESOLUTION SET CORRECTLY");
@@ -200,7 +203,10 @@ void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::Cons
 //this recieves the odometry for the program to create the sliding window
 void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 	if(_count >= _skipCounter && _alignmentSwitch == 1){
-
+		if(_loops == 0){
+			tf2::fromMsg(msg->pose.pose.position, _initV);
+			tf2::fromMsg(msg->pose.pose.orientation,_initQ);
+		}
 		_loops++;
 		stringstream lo;
 		lo<<"CURRENT LOOP: "<<_loops;
@@ -212,6 +218,8 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		//geometry_msgs::TransformStamped transformStamped = _tfBuffer.lookupTransform("/imu","/stereo_link",ros::Time(0));
 		//Eigen::Affine3d affine = tf2::transformToEigen(transformStamped);
 		nav_msgs::Odometry odomData = *msg;
+		odomData.header.stamp = ros::Time::now();
+		if(_pubOdometry.getNumSubscribers()>0)_pubOdometry.publish(odomData);
 		if(_queueCurrentSize >= _queueSize){
 			_window.pop_back();
 			_odomWindow.pop_back();
@@ -235,8 +243,26 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 			ROS_INFO_STREAM(s1.str());
 		}
 		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow)));
+
+		  geometry_msgs::TransformStamped transformStamped;
+
+		  transformStamped.header.frame_id = "world";
+		  transformStamped.child_frame_id = "map";
+		  transformStamped.transform.translation.x = _CurrentV.x();
+		  transformStamped.transform.translation.y = _CurrentV.y();
+		  transformStamped.transform.translation.z = _CurrentV.z();
+		  transformStamped.transform.rotation.x = _CurrentQ.x();
+		  transformStamped.transform.rotation.y = _CurrentQ.y();
+		  transformStamped.transform.rotation.z = _CurrentQ.z();
+		  transformStamped.transform.rotation.w = _CurrentQ.w();
+		  transformStamped.header.stamp = ros::Time::now();
+		  tfb.sendTransform(transformStamped);
+
 		_freeTrajectories(ptCloudScene);
+
 		ptCloudScene->header.frame_id = "map";
+		pcl_conversions::toPCL(ros::Time::now(),ptCloudScene->header.stamp);
+
 		if(_pubPoints.getNumSubscribers()>0) _pubPoints.publish(*ptCloudScene);
 		_count = 0;
 		_alignmentSwitch=0;
@@ -288,6 +314,9 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	Eigen::Quaterniond endQ;
 	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
 	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
+	_CurrentQ = differenceOfQuat(endQ,_initQ);
+	_CurrentV = differenceOfVec(endV,_initV);
+	_CurrentV = _CurrentV.transpose() * _initQ.toRotationMatrix();
 	std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
 	for(int i = 1; i<_queueCurrentSize;i++){
 		Eigen::Vector3d startV;
@@ -492,7 +521,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	for(int i =0; i<trajectories.size();i++){
 		trajectories[i].sectorX = (trajectories[i].sectorX * (180/_ElRez)*(2*M_PI/360));
 		trajectories[i].sectorY = ((trajectories[i].sectorY -_AzRez/2) * (360/_AzRez)*(2*M_PI/360));
-		trajectories[i].magnitude *=2/maxMag;
+		trajectories[i].magnitude *=1/maxMag;
 		std::vector<double> aer = {trajectories[i].sectorY,trajectories[i].sectorX,trajectories[i].magnitude};
 		trajectories[i].xyz = _convertToCartesian(aer);
 	}
@@ -505,18 +534,20 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	deleter.markers[0].id = 0;
 	deleter.markers[0].type = visualization_msgs::Marker::ARROW;
 	deleter.markers[0].action = visualization_msgs::Marker::DELETEALL;
-	_vis_pub.publish(deleter);
+	//_vis_pub.publish(deleter);
 	visualization_msgs::MarkerArray markArray;
 	markArray.markers.resize(trajectories.size());
 
-	for(int i = 0; i <trajectories.size();i++){
+	for(int i = 0 ; i <trajectories.size();i++){
 
 		markArray.markers[i].header.frame_id = "map";
 		markArray.markers[i].header.stamp = ros::Time();
-		markArray.markers[i].ns = "my_namespace";
+		markArray.markers[i].ns = "my_namespace" + to_string(_loops);
 		markArray.markers[i].id = i;
 		markArray.markers[i].type = visualization_msgs::Marker::ARROW;
 		markArray.markers[i].action = visualization_msgs::Marker::ADD;
+		markArray.markers[i].lifetime = ros::Duration(1000);
+
 		geometry_msgs::Point start;
 		start.x = 0;
 		start.y = 0;
@@ -540,7 +571,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	}
 	sensor_msgs::ImagePtr msgC = cv_bridge::CvImage(std_msgs::Header(), "rgb8", drawing).toImageMsg();
 	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", grayMat).toImageMsg();
-	if(_vis_pub.getNumSubscribers()>0)_vis_pub.publish(markArray);
+	if(_vis_pub.getNumSubscribers()>0 && _loops % _markerSkip == 0)_vis_pub.publish(markArray);
 	if(_pubImage.getNumSubscribers()>0)_pubImage.publish(msg);
 	if(_pubContours.getNumSubscribers()>0)_pubContours.publish(msgC);
 	std::chrono::high_resolution_clock::time_point t_end3 = std::chrono::high_resolution_clock::now();

@@ -20,24 +20,13 @@ int main(int argc, char** argv) {
 
 	std::string topicOdom;
 	std::string topicOut;
-	ros::NodeHandle n;
-	if(n.getParam("CloudOutput", topicOut)){
-		ROS_INFO("CLOUD OUTPUT SET CORRECTLY");
-	}else{
-		ROS_INFO("ERROR: CLOUD OUTPUT SET INCORRECTLY. SETTING TO DEFAULT");
-		topicOut = "window_points";
-	}
-	if(n.getParam("OdometryInput", topicOdom)){
-		ROS_INFO("ODOMETRY INPUT SET CORRECTLY");
-	}else{
-		ROS_INFO("ERROR: ODOMETRY INPUT SET INCORRECTLY. SETTING TO DEFAULT");
-		topicOdom = "msf_core/odometry";
-	}
+	ros::NodeHandle n("vfh3d");
+
 	uint32_t queue_size = 5;
-	string topic = n.resolveName("points");
-	pubHandler handler = pubHandler(n,topicOut, 100);
+	string topic = n.resolveName("/cloudTransformer/points");
+	pubHandler handler = pubHandler(n,"window_points", 100);
 	ros::Subscriber subPoints = n.subscribe<pcl::PointCloud<pcl::PointXYZ> >(topic,queue_size,&pubHandler::messageReceivedCloud, &handler);
-	ros::Subscriber subOdometry = n.subscribe<nav_msgs::Odometry>(topicOdom,queue_size,&pubHandler::messageReceivedPose, &handler);
+	ros::Subscriber subOdometry = n.subscribe<nav_msgs::Odometry>("odometry",queue_size,&pubHandler::messageReceivedPose, &handler);
 	ros::spin();
 	return 0;
 }
