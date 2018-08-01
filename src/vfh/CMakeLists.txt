@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   genmsg
+  tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
@@ -145,7 +146,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/vfh_node.cpp)
 add_executable(VFH3D src/VFH3D.cpp)
-
+add_executable(cloudTransformer src/cloudTransformer.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -167,6 +168,10 @@ target_link_libraries(VFH3D
  ${catkin_LIBRARIES}
  ${PCL_LIBRARIES}
  ${OpenCV_LIBRARIES}
+)
+target_link_libraries(cloudTransformer
+ ${catkin_LIBRARIES}
+ ${PCL_LIBRARIES}
 )
 
 #############

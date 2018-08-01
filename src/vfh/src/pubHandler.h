@@ -10,6 +10,10 @@
 #define PUBHANDLER_H_
 
 #include "ros/ros.h"
+#include "tf2_ros/buffer.h"
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
+#include "tf2/buffer_core.h"
 #include "std_msgs/String.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "visualization_msgs/MarkerArray.h"
@@ -38,6 +42,7 @@
 #include <sstream>
 #include <boost/foreach.hpp>
 #include <cmath>
+
 
 using namespace cv;
 using namespace std;
@@ -72,8 +77,8 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
-	tf2_ros::Buffer _tfBuffer;
-	tf2_ros::TransformListener _tfListener;
+	//tf2_ros::Buffer _tfBuffer;
+	//tf2_ros::TransformListener* _tfListener;
 	int _alignmentSwitch;
 	int _queueSize;
 	int _queueCurrentSize;

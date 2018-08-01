@@ -24,7 +24,7 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
-	_tfListener(_tfBuffer);
+	//_tfListener=new tf2_ros::TransformListener(_tfBuffer);
 	if(n.getParam("HREZ", _AzRez)){
 		ROS_INFO("HORIZONTAL RESOLUTION SET CORRECTLY");
 	}else{
@@ -200,12 +200,17 @@ void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::Cons
 //this recieves the odometry for the program to create the sliding window
 void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 	if(_count >= _skipCounter && _alignmentSwitch == 1){
+
 		_loops++;
 		stringstream lo;
 		lo<<"CURRENT LOOP: "<<_loops;
 		if(_timing)ROS_INFO_STREAM(lo.str());
 		if(_debug)ROS_INFO("Receiving Odometry...");
 		std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
+
+
+		//geometry_msgs::TransformStamped transformStamped = _tfBuffer.lookupTransform("/imu","/stereo_link",ros::Time(0));
+		//Eigen::Affine3d affine = tf2::transformToEigen(transformStamped);
 		nav_msgs::Odometry odomData = *msg;
 		if(_queueCurrentSize >= _queueSize){
 			_window.pop_back();
@@ -217,6 +222,7 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		sor.setInputCloud(_data);
 		sor.setLeafSize (_voxelSize, _voxelSize, _voxelSize);
 		sor.filter(*ptCloudSceneFiltered);
+		//pcl::transformPointCloud(*ptCloudSceneFiltered,*ptCloudSceneFiltered,affine);
 		_window.push_front(ptCloudSceneFiltered);
 		_odomWindow.push_front(odomData);
 		_queueCurrentSize++;
@@ -230,6 +236,7 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		}
 		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow)));
 		_freeTrajectories(ptCloudScene);
+		ptCloudScene->header.frame_id = "map";
 		if(_pubPoints.getNumSubscribers()>0) _pubPoints.publish(*ptCloudScene);
 		_count = 0;
 		_alignmentSwitch=0;
@@ -250,7 +257,7 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 
 //takes in two quaternions and gives back the quaternion that rotates from the starting quaternion to the next quaternion
 Eigen::Quaterniond pubHandler::differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end){
-	Eigen::Quaterniond difference =  start.inverse() * end;
+	Eigen::Quaterniond difference = end.inverse() * start;
 	return difference;
 }
 Eigen::Vector3d pubHandler::differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end){
@@ -287,7 +294,7 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 		Eigen::Quaterniond startQ;
 		tf2::fromMsg(odomWindow[i].pose.pose.position, startV);
 		tf2::fromMsg(odomWindow[i].pose.pose.orientation,startQ);
-		Eigen::Quaterniond differenceQ = differenceOfQuat(endQ,startQ);
+		Eigen::Quaterniond differenceQ = differenceOfQuat(startQ,endQ);
 		Eigen::Vector3d differenceV = differenceOfVec(startV,endV);
 		differenceV = differenceV.transpose() * endQ.toRotationMatrix();
 		Eigen::Affine3d affine1 = Eigen::Affine3d::Identity();;
@@ -342,7 +349,7 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 	}
 	for(int i = 0; i<_AzRez; i++){
 		for( int j = 0; j<_ElRez; j++){
-			tempMat[i][j]= 0.0;
+			tempMat[i][j]= -1.0;
 		}
 	}
 	for(int row = 0; row< points.size();row++){
@@ -350,7 +357,10 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 		int e = points.at(row).e;
 		double r = points.at(row).r;
 		if(e>= 0 && e < _ElRez){
-			if(r <tempMat[a][e]|| tempMat[a][e]<=0.04){
+			if(r<0){
+				ROS_INFO("NEGATIVE RADIUS!");
+			}
+			if(r <tempMat[a][e]|| tempMat[a][e]<0.00){
 				tempMat[a][e] = r;
 			}
 		}
@@ -489,7 +499,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	std::chrono::high_resolution_clock::time_point t_start3 = std::chrono::high_resolution_clock::now();
 	visualization_msgs::MarkerArray deleter;
 	deleter.markers.resize(1);
-	deleter.markers[0].header.frame_id = "velodyne";
+	deleter.markers[0].header.frame_id = "map";
 	deleter.markers[0].header.stamp = ros::Time();
 	deleter.markers[0].ns = "my_namespace";
 	deleter.markers[0].id = 0;
@@ -501,7 +511,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 
 	for(int i = 0; i <trajectories.size();i++){
 
-		markArray.markers[i].header.frame_id = "velodyne";
+		markArray.markers[i].header.frame_id = "map";
 		markArray.markers[i].header.stamp = ros::Time();
 		markArray.markers[i].ns = "my_namespace";
 		markArray.markers[i].id = i;

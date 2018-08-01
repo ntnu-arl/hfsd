@@ -1,14 +1,18 @@
 <launch>
+  <param name="OdometryInput" value="integrated_to_init_CORRECTED" type="string"/>
+  <param name="CloudInput" value="velodyne_points" type="string"/>
+  <param name="CloudOutput" value="window_points" type="string"/>
+
   <param name="HREZ" value="180" type="int"/>
   <param name="VREZ" value="90" type="int"/>
 
-  <param name="queueSize" value="25" type="int"/>
+  <param name="queueSize" value="10" type="int"/>
   <param name="skipFrames" value="0" type="int"/>
 
   <param name="areaRestricter" value="0" type="double"/>
   <param name="heightSplitter" value="0" type="double"/>
-  <param name="minDistRejFilterVal" value="0" type="double"/>
-  <param name="voxelSize" value="0.2" type="double"/>
+  <param name="minDistRejFilterVal" value="1" type="double"/>
+  <param name="voxelSize" value="0.05" type="double"/>
 
   <param name="uniformGrid" value="false" type="bool"/>
   <param name="voxelUniformSize" value="0.075" type="double"/>
@@ -34,21 +38,11 @@
   <param name="erode" value="false" type="bool"/>
   <param name="erosionIterations" value="1" type="int"/>
 
-  <param name="showTiming" value="true" type="bool"/>
+  <param name="showTiming" value="false" type="bool"/>
   <param name="showDebugMessages" value="false" type="bool"/>
-
-  <node name="dep_drop" pkg="topic_tools" type="drop" output="screen" args="/camera/depth/image 2 3 /camera/depth/image_drop"/>
-  <node name="info_drop" pkg="topic_tools" type="drop" output="screen" args="/camera/depth/camera_info 2 3 /camera/depth/camera_info_drop"/>
-  <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager"/>
-
-  <node pkg="nodelet" type="nodelet" name="Proc"
-        args="load depth_image_proc/point_cloud_xyz standalone_nodelet">
-    <remap from="/image_rect" to="/camera/depth/image_drop"/>
-    <remap from="/camera_info" to="/camera/depth/camera_info_drop"/>
-  </node>
-
-  <node pkg="tf2_ros" type="static_transform_publisher" name="camera_to_velodyne" args="0 0 0 0.5 0.5 0.5 -0.5 /camera_init /velodyne" 
-  </node>
-
+  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor_to_Odom_broadcaster" args="0.121 0.035 -0.058 -0.573 0.581 -0.414 0.403 odom stereo_link" />
+  <node pkg="tf2_ros" type="static_transform_publisher" name="Odom_to_Window_broadcaster" args="0 0 0 0 0 0 1 map body" />
+  <node name="cloudTransformer" pkg="vfh" type="cloudTransformer" output="screen" args="map body" />
   <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen" />
 </launch>
