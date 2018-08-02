@@ -10,6 +10,10 @@
 #define PUBHANDLER_H_
 
 #include "ros/ros.h"
+#include "tf2_ros/buffer.h"
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
+#include "tf2/buffer_core.h"
 #include "std_msgs/String.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "visualization_msgs/MarkerArray.h"
@@ -38,6 +42,8 @@
 #include <sstream>
 #include <boost/foreach.hpp>
 #include <cmath>
+#include "tf2_ros/transform_broadcaster.h"
+
 
 using namespace cv;
 using namespace std;
@@ -65,6 +71,7 @@ public:
 private:
 	/* Private Variables*/
 	ros::Publisher _pubPoints;
+	ros::Publisher _pubOdometry;
 	ros::Publisher _vis_pub;
 	image_transport::Publisher _pubImage;
 	image_transport::Publisher _pubContours;
@@ -72,6 +79,8 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
+	//tf2_ros::Buffer _tfBuffer;
+	//tf2_ros::TransformListener* _tfListener;
 	int _alignmentSwitch;
 	int _queueSize;
 	int _queueCurrentSize;
@@ -88,6 +97,11 @@ private:
 	int _skipCounter;
 	int _loops;
 
+	Eigen::Vector3d _CurrentV;
+	Eigen::Vector3d _initV;
+	Eigen::Quaterniond _CurrentQ;
+	Eigen::Quaterniond _initQ;
+
 	double _blurSigmaY;
 	double _areaRestricter;
 	double _blurSigmaX;
@@ -96,6 +110,7 @@ private:
 	double _splitter;
 	double _rejection;
 	double _iOffset;
+	double _relativeMagnitude;
 
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
@@ -118,6 +133,9 @@ private:
 	bool _erode;
 	bool _uniformGrid;
 
+	int _markerSkip;
+
+	tf2_ros::TransformBroadcaster tfb;
 
 	/*Private Functions*/
 	std::vector<double> _convertToCartesian(std::vector<double> aer);
@@ -125,6 +143,7 @@ private:
 	std::map<std::string,std::vector<trajectory> > _freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	cv::Mat _radmatrix(std::vector<sector> points);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
+	pcl::PointCloud<pcl::PointXYZ> _preprocessingNew(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
 
 #endif /* PUBHANDLER_H_ */
