@@ -25,7 +25,7 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
-
+	n.param("markerMag",_relativeMagnitude,2.0);
 	n.param("markerSkip",_markerSkip,0);
 	//_tfListener=new tf2_ros::TransformListener(_tfBuffer);
 	if(n.getParam("HREZ", _AzRez)){
@@ -521,7 +521,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	for(int i =0; i<trajectories.size();i++){
 		trajectories[i].sectorX = (trajectories[i].sectorX * (180/_ElRez)*(2*M_PI/360));
 		trajectories[i].sectorY = ((trajectories[i].sectorY -_AzRez/2) * (360/_AzRez)*(2*M_PI/360));
-		trajectories[i].magnitude *=1/maxMag;
+		trajectories[i].magnitude *=_relativeMagnitude/maxMag;
 		std::vector<double> aer = {trajectories[i].sectorY,trajectories[i].sectorX,trajectories[i].magnitude};
 		trajectories[i].xyz = _convertToCartesian(aer);
 	}

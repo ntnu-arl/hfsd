@@ -13,6 +13,7 @@
   </node>
   <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen">
      <param name="markerSkip" value="5" type="int"/>
+     <param name="markerMag" value="2.0" type="double"/>
 
      <param name="HREZ" value="180" type="int"/>
      <param name="VREZ" value="90" type="int"/>

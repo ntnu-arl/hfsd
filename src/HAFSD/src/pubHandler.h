@@ -110,6 +110,7 @@ private:
 	double _splitter;
 	double _rejection;
 	double _iOffset;
+	double _relativeMagnitude;
 
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
