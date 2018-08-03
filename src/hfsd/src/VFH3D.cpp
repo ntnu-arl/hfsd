@@ -16,11 +16,11 @@
 #include "sensor_msgs/PointCloud2.h"
 
 int main(int argc, char** argv) {
-	ros::init(argc,argv,"vfh3d");
+	ros::init(argc,argv,"hfsd");
 
 	std::string topicOdom;
 	std::string topicOut;
-	ros::NodeHandle n("vfh3d");
+	ros::NodeHandle n("hfsd");
 
 	uint32_t queue_size = 5;
 	string topic = n.resolveName("/cloudTransformer/points");

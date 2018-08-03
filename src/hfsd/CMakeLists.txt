@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(vfh)
+project(hfsd)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -112,7 +112,7 @@ find_package(OpenCV 3 REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES vfh
+  LIBRARIES hfsd
   CATKIN_DEPENDS camera_info_manager cv_bridge image_transport roscpp rospy std_msgs
   DEPENDS PCL OpenCV
 )
@@ -145,7 +145,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/vfh_node.cpp)
-add_executable(VFH3D src/VFH3D.cpp)
+add_executable(hfsd src/VFH3D.cpp)
 add_executable(cloudTransformer src/cloudTransformer.cpp)
 
 ## Rename C++ executable without prefix
@@ -164,7 +164,7 @@ add_executable(cloudTransformer src/cloudTransformer.cpp)
 #   ${PCL_LIBRARIES}
 #   ${OpenCV_LIBRARIES}
 # )
-target_link_libraries(VFH3D
+target_link_libraries(hfsd
  ${catkin_LIBRARIES}
  ${PCL_LIBRARIES}
  ${OpenCV_LIBRARIES}

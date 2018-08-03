@@ -5,13 +5,13 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="stereo_to_Base_broadcaster" args="0.121 0.035 -0.058 -0.573 0.581 -0.414 0.403 $(arg base_link) stereo_link" />
   <node pkg="tf2_ros" type="static_transform_publisher" name="velodyne_to_Base_broadcaster" args="0 0 0 0 0 0 1 $(arg base_link) velodyne" />
   <node pkg="tf2_ros" type="static_transform_publisher" name="Base_to_map_broadcaster" args="0 0 0 0 0 0 1 map $(arg base_link)" />
-  <node pkg="tf2_ros" type="static_transform_publisher" name="camera_init_to_world_broadcaster" args="0.015 0.005 0504 0.504 0.493 0.496 0.506 map camera_init" />
-  <node name="cloudTransformer" pkg="vfh" type="cloudTransformer" output="screen">
+
+  <node name="cloudTransformer" pkg="hfsd" type="cloudTransformer" output="screen">
      <param name="sensor_frame" value="$(arg camera)" />
      <param name="base_frame" value="$(arg base_link)" />
      <remap from="/cloudTransformer/inputcloud" to="/velodyne_points"/>
   </node>
-  <node name="vfh3d" pkg="vfh" type="VFH3D" output="screen">
+  <node name="hfsd" pkg="hfsd" type="hfsd" output="screen">
      <param name="markerSkip" value="5" type="int"/>
      <param name="markerMag" value="2.0" type="double"/>
 
@@ -22,7 +22,7 @@
      <param name="skipFrames" value="0" type="int"/>
 
      <param name="areaRestricter" value="0" type="double"/>
-     <param name="heightSplitter" value="0" type="double"/>
+     <param name="heightSplitter" value="10000" type="double"/>
      <param name="minDistRejFilterVal" value="1" type="double"/>
      <param name="voxelSize" value="0.2" type="double"/>
 
@@ -53,6 +53,6 @@
      <param name="showTiming" value="false" type="bool"/>
      <param name="showDebugMessages" value="false" type="bool"/>
 
-     <remap from="/vfh3d/odometry" to="/integrated_to_init_CORRECTED"/>
+     <remap from="/hfsd/odometry" to="/integrated_to_init_CORRECTED"/>
   </node>
 </launch>
