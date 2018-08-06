@@ -8,7 +8,7 @@ This package is built using catkin tools.
 ## Basic Usage
 
 ### Subscribers
-- sub (pcl::PointCloud<pcl::PointXYZ>)
+- sub (pcl::PointCloud<<pcl::PointXYZ>>)
 - subod (nav_msgs::Odometry)
 ### Publishers
 ### Paramaters
