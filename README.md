@@ -8,7 +8,12 @@ This package is built using catkin tools.
 ## Basic Usage
 
 ### Subscribers
-- sub (pcl::PointCloud<<pcl::PointXYZ>>)
-- subod (nav_msgs::Odometry)
+- /cloudTransformer/inputcloud (sensor_msgs/PointCloud2)
+- /hfsd/odometry (nav_msgs/Odometry)
 ### Publishers
+- /hfsd/OdomOut (nav_msgs/Odometry)
+- /hfsd/open/contours (sensor_msgs/Image)
+- /hfsd/open/image (sensor_msgs/Image)
+- /hfsd/visualization_marker (visualization_msgs/MarkerArray)
+- /hfsd/window_points (sensor_msgs/PointCloud2)
 ### Paramaters
