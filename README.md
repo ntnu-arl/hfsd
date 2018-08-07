@@ -45,6 +45,7 @@ Depends on a full installation of ROS Kinetic.
   $ cd ~/catkin_ws/src/hfsd
   $ rosbag play test.bag
 ```
+* In Rviz load the config file found in at `../hfsd/rviz_config/hfsd_test.rviz`
 * Rviz should show something similar to this:
 
  ![Rviz Example](/rviz_config/RvizTest.png?raw=true "Rviz Example")
