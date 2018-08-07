@@ -111,6 +111,10 @@ private:
 	double _rejection;
 	double _iOffset;
 	double _relativeMagnitude;
+	double _markerLifetime;
+	double _arrowShaftDiameter;
+	double _arrowHeadDiameter;
+	double _arrowHeadLength;
 
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
@@ -143,7 +147,6 @@ private:
 	std::map<std::string,std::vector<trajectory> > _freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 	cv::Mat _radmatrix(std::vector<sector> points);
 	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
-	pcl::PointCloud<pcl::PointXYZ> _preprocessingNew(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
 };
 
 #endif /* PUBHANDLER_H_ */

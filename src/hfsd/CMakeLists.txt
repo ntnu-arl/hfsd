@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(PCL REQUIRED)
 find_package(OpenCV 3 REQUIRED)
+find_package(Eigen3  REQUIRED)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -111,9 +112,9 @@ find_package(OpenCV 3 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  #INCLUDE_DIRS include
+  INCLUDE_DIRS include ${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS}
   LIBRARIES hfsd
-  CATKIN_DEPENDS camera_info_manager cv_bridge image_transport roscpp rospy std_msgs
+  CATKIN_DEPENDS camera_info_manager cv_bridge image_transport roscpp rospy std_msgs 
   DEPENDS PCL OpenCV
 )
 
@@ -124,11 +125,12 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 # TODO: Check names of system library include directories (PCL, OpenCV)
   ${PCL_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${Eigen3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

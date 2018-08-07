@@ -25,6 +25,11 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
+
+	n.param("markerLifetime",_markerLifetime,0.0);
+	n.param("arrowShaftDiameter",_arrowShaftDiameter,0.1);
+	n.param("arrowHeadDiameter",_arrowHeadDiameter,0.15);
+	n.param("arrowHeadLength",_arrowHeadLength,0.1);
 	n.param("markerMag",_relativeMagnitude,2.0);
 	n.param("markerSkip",_markerSkip,0);
 	//_tfListener=new tf2_ros::TransformListener(_tfBuffer);
@@ -152,7 +157,7 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 		ROS_INFO("INTENSITY OFFSET SET CORRECTLY");
 	}else{
 		ROS_INFO("ERROR: INTENSITY OFFSET SET INCORRECTLY. SETTING TO DEFAULT");
-		_iOffset = 0.0;
+		_iOffset = -745;
 	}
 	if(n.getParam("dilate", _dilate)){
 		ROS_INFO("DILATION SET CORRECTLY");
@@ -290,21 +295,6 @@ Eigen::Vector3d pubHandler::differenceOfVec(Eigen::Vector3d start, Eigen::Vector
 	Eigen::Vector3d difference = start-end;
 	return difference;
 }
-
-pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessingNew(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, std::deque<nav_msgs::Odometry> odomWindow){
-	if(_debug)ROS_INFO("Preprocessing...");
-	std::chrono::high_resolution_clock::time_point t_start1 = std::chrono::high_resolution_clock::now();
-	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(*window[0]));
-	Eigen::Vector3d endV;
-	Eigen::Quaterniond endQ;
-	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
-	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
-	//TODO: Broadcast the current pose
-	//TODO: recieve transforms between current pose and all frames in window
-	//TODO: use static transform to convert the poses to the correct frame.
-
-	return *ptCloudScene;
-}
 //this is the pre-processing step that transforms and filters the point cloud queue
 pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, std::deque<nav_msgs::Odometry> odomWindow){
 	if(_debug)ROS_INFO("Preprocessing...");
@@ -318,6 +308,9 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 	_CurrentV = differenceOfVec(endV,_initV);
 	_CurrentV = _CurrentV.transpose() * _initQ.toRotationMatrix();
 	std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
+	stringstream ss;
+        ss<<"CURRENT QUEUE SIZE: "<<_queueCurrentSize;
+	ROS_INFO_STREAM(ss.str());
 	for(int i = 1; i<_queueCurrentSize;i++){
 		Eigen::Vector3d startV;
 		Eigen::Quaterniond startQ;
@@ -546,7 +539,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 		markArray.markers[i].id = i;
 		markArray.markers[i].type = visualization_msgs::Marker::ARROW;
 		markArray.markers[i].action = visualization_msgs::Marker::ADD;
-		markArray.markers[i].lifetime = ros::Duration(1000);
+		markArray.markers[i].lifetime = ros::Duration(_markerLifetime);
 
 		geometry_msgs::Point start;
 		start.x = 0;
@@ -558,9 +551,9 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 		end.z =trajectories[i].xyz[2];
 
 		markArray.markers[i].points = {start, end};
-		markArray.markers[i].scale.x = 0.1;
-		markArray.markers[i].scale.y = 0.15;
-		markArray.markers[i].scale.z = 0.1;
+		markArray.markers[i].scale.x = _arrowShaftDiameter;
+		markArray.markers[i].scale.y = _arrowHeadDiameter;
+		markArray.markers[i].scale.z = _arrowHeadLength;
 		markArray.markers[i].color.a = 1.0; // Don't forget to set the alpha!
 		markArray.markers[i].color.r = colors[i].val[0]/255.0;
 		markArray.markers[i].color.g = colors[i].val[1]/255.0;
