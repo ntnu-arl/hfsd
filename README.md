@@ -7,13 +7,53 @@ Depends on a full installation of ROS Kinetic. Installation instructions for ROS
 This package is built using catkin tools.
 ## Basic Usage
 
-### Subscribers
+### Subscribed Topics
 - **`/cloudTransformer/inputcloud`** of type `sensor_msgs/PointCloud2`. This should be remapped to a topic that publishes point clouds. It transforms `PointCloud2` messages to `PCL::PointCloud<<PCL::PointXYZ>>` data structures internally.
 - **`/hfsd/odometry`** of type `nav_msgs/Odometry`. The odometry should be in the world frame. This is used to create the sliding window of `PointCloud2` messages.
-### Publishers
+### Published Topics
 - **`/hfsd/OdomOut`** of type `nav_msgs/Odometry`. This simply shows the odometry being used by the algorithm.
 - **`/hfsd/open/contours`** of type `sensor_msgs/Image` This publishes a 2D image of color coded contours extracted by the algorithm. The contours also have dots on them representing their centroids.
 - **`/hfsd/open/image`** of type `sensor_msgs/Image`. This publishes a 2D image of the grayscale matrix that is used to determine directions of free space.
 - **`/hfsd/visualization_marker`** of type `visualization_msgs/MarkerArray`. This publishes the visualization of the directions of free space produced by the algorithm.
 - **`/hfsd/window_points`** of type `sensor_msgs/PointCloud2`. This publishes the sliding window of point clouds.
 ### Paramaters
+| Parameter             | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `sensor_frame`        | The internal reference frame associated with the sensor                         |
+| `base_frame`          | The chosen base_frame typically `base_link`                                     |
+| `markerSkip`          | Number of frames before next publishing on `/hfsd/visualization_marker`         |
+| `markerMag`           | Length of the visualization markers                                             |
+| `markerLifetime`      | Lifetime of the visualization markers                                           |
+| `arrowHeadDiameter`   | Diameter of the arrow head for the visualization markers                        |
+| `arrowShaftDiameter`  | Diameter of the arrow shaft fot the visualization markers                       |
+| `arrowHeadLength`     | Length of the arrow head for the visualization markers                          |
+| `HREZ`                | The number of sectors that exist along the azimuth of the spherical matrix      |
+| `VREZ`                | The number of sectors that exist along the elevation of the spherical matrix    |
+| `queueSize`           | The number of consecutive point clouds aligned in the sliding window            |
+| `skipFrames`          | The number of point cloud messages to skip before adding a message to the queue |
+| `areaRestricter`      | Filters out all found contours below this number                                |
+| `heightSplitter`      | If a contour has more height than this param it will be split into parts        |
+| `minDistRejFilterVal` | Sets spherical sectors below this number to 0                                   |
+| `voxelSize`           | Size of the initial voxel grid filter                                           |
+| `uniformGrid`*        | Enables/Disables secondary voxel grid                                           |
+| `voxelUniformSize`*   | Size of the secondary voxel grid                                                |
+| `box`*                | Enables/Disables the box filter                                                 |
+| `boxSizeX`*           | Changes the X value of the box filter size. Must be odd or 0                    |
+| `boxSizeY`*           | Changes the Y value of the box filter size. Must be odd or 0                    |
+| `blur`*               | Enables/Disables the gaussian blur                                              |
+| `blurSizeX`*          | Changes the X value of the gaussian blur size. Must be odd or 0                 |
+| `blurSizeY`*          | Changes the Y value of the gaussian blur size. Must be odd or 0                 |
+| `blurSigmaX`*         | Changes the X value of the gaussian blur sigma. Must be odd or 0                |
+| `blurSigmaY`*         | Changes the Y value of the gaussian blur sigma. Must be odd or 0                |
+| `median`              | Enables/Disables the gaussian blur                                              |
+| `medianSize`          | Changes the X value of the gaussian blur size. Must be odd                      |
+| `intensityOffset`     | The number that modifies intensity values for grayscale.                        |
+| `dilate`              | Enables/Disables dilation                                                       |
+| `dilationIterations`  | Number of dilations                                                             |
+| `erode`*              | Enables/Disables erosion                                                        |
+| `erosionIterations`*  | Number of erosions                                                              |
+| `showTiming`          | Enable/Disable timing messages                                                  |
+| `showDebugMessages`   | Enable/Disable debug messages                                                   |
+
+\* These parameters are typically disabled and may cause unknown effects when enabled.
+
