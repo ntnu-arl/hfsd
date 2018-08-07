@@ -53,7 +53,7 @@ To launch the program:
 * Modify the launch file to the desired parameters.
 * Run the following:
 ```sh
-  $ cd ~/HFSD
+  $ cd ~/catkin_ws
   $ source devel/setup.bash
   $ roslaunch hfsd hfsd.launch
 ``` 
