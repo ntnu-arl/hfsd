@@ -8,12 +8,12 @@ This package is built using catkin tools.
 ## Basic Usage
 
 ### Subscribers
-- ** '/cloudTransformer/inputcloud' of type 'sensor_msgs/PointCloud2'. This should be remapped to a topic that publishes point clouds. It transforms 'PointCloud2' messages to 'PCL::PointCloud<<PCL::PointXYZ>>' data structures internally.
-- ** '/hfsd/odometry' of type 'nav_msgs/Odometry'. The odometry should be in the world frame. This is used to create the sliding window of PointCloud2 messages.
+- **`/cloudTransformer/inputcloud`** of type `sensor_msgs/PointCloud2`. This should be remapped to a topic that publishes point clouds. It transforms `PointCloud2` messages to `PCL::PointCloud<<PCL::PointXYZ>>` data structures internally.
+- **`/hfsd/odometry`** of type `nav_msgs/Odometry`. The odometry should be in the world frame. This is used to create the sliding window of `PointCloud2` messages.
 ### Publishers
-- ** '/hfsd/OdomOut' of type 'nav_msgs/Odometry'
-- ** '/hfsd/open/contours' of type 'sensor_msgs/Image'
-- ** '/hfsd/open/image' of type 'sensor_msgs/Image'
-- ** '/hfsd/visualization_marker' of type 'visualization_msgs/MarkerArray'
-- ** '/hfsd/window_points' of type 'sensor_msgs/PointCloud2'
+- **`/hfsd/OdomOut`** of type `nav_msgs/Odometry`. This simply shows the odometry being used by the algorithm.
+- **`/hfsd/open/contours`** of type `sensor_msgs/Image` This publishes a 2D image of color coded contours extracted by the algorithm. The contours also have dots on them representing their centroids.
+- **`/hfsd/open/image`** of type `sensor_msgs/Image`. This publishes a 2D image of the grayscale matrix that is used to determine directions of free space.
+- **`/hfsd/visualization_marker`** of type `visualization_msgs/MarkerArray`. This publishes the visualization of the directions of free space produced by the algorithm.
+- **`/hfsd/window_points`** of type `sensor_msgs/PointCloud2`. This publishes the sliding window of point clouds.
 ### Paramaters
