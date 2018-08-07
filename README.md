@@ -8,12 +8,12 @@ This package is built using catkin tools.
 ## Basic Usage
 
 ### Subscribers
-- /cloudTransformer/inputcloud (sensor_msgs/PointCloud2)
-- /hfsd/odometry (nav_msgs/Odometry)
+- ** '/cloudTransformer/inputcloud' of type 'sensor_msgs/PointCloud2'. This should be remapped to a topic that publishes point clouds. It transforms 'PointCloud2' messages to 'PCL::PointCloud<<PCL::PointXYZ>>' data structures internally.
+- ** '/hfsd/odometry' of type 'nav_msgs/Odometry'. The odometry should be in the world frame. This is used to create the sliding window of PointCloud2 messages.
 ### Publishers
-- /hfsd/OdomOut (nav_msgs/Odometry)
-- /hfsd/open/contours (sensor_msgs/Image)
-- /hfsd/open/image (sensor_msgs/Image)
-- /hfsd/visualization_marker (visualization_msgs/MarkerArray)
-- /hfsd/window_points (sensor_msgs/PointCloud2)
+- ** '/hfsd/OdomOut' of type 'nav_msgs/Odometry'
+- ** '/hfsd/open/contours' of type 'sensor_msgs/Image'
+- ** '/hfsd/open/image' of type 'sensor_msgs/Image'
+- ** '/hfsd/visualization_marker' of type 'visualization_msgs/MarkerArray'
+- ** '/hfsd/window_points' of type 'sensor_msgs/PointCloud2'
 ### Paramaters
