@@ -6,7 +6,7 @@
 // Description : The bulk of the algorithm each function is commented.
 //============================================================================
 
-#include "pubHandler.h"
+#include "hfsd/pubHandler.h"
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_pubOdometry = n.advertise<nav_msgs::Odometry>("OdomOut",num);
