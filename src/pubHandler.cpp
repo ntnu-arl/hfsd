@@ -10,7 +10,7 @@
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_pubOdometry = n.advertise<nav_msgs::Odometry>("OdomOut",num);
-        _pubVect = n.advertise<hfsd::Vector3Array>("projvecs",num);
+        _pubVect = n.advertise<hfsd::Vector3Array>("direction_vectors",num);
 	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker",0);
 	image_transport::ImageTransport it(n);
 	_pubImage = it.advertise("open/image", 1);
@@ -534,7 +534,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	markArray.markers.resize(trajectories.size());
 	hfsd::Vector3Array outVect;
 	outVect.vectors.resize(trajectories.size());
-	ros::Time stamp = ros::Time();
+	ros::Time stamp = ros::Time::now();
 	outVect.header.stamp = stamp;
 	outVect.header.frame_id = "map";
 	

@@ -62,6 +62,6 @@
      <remap from="/hfsd/odometry" to="/rovio/odometry"/>
   </node>  
   <group if="$(arg rviz)">
-    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args=" -d $(find hfsd)/rviz_cfg/hfsd_test3.rviz" />
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args=" -d $(find hfsd)/rviz_config/hfsd_test.rviz" />
   </group>
 </launch>
