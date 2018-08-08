@@ -109,3 +109,10 @@ To launch the program:
 
 \* These parameters are typically disabled and may cause unknown effects when enabled.
 
+# Contact
+
+You can contact us for any question or remark:
+* [Ryan Fite](mailto:ryanfite@live.com)
+* [Shehryar Khattak](mailto:shehryar@nevada.unr.edu)
+* [Kostas Alexis](mailto:kalexis@unr.edu)
+
