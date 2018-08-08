@@ -40,9 +40,9 @@ Depends on a full installation of ROS Kinetic.
   $ source devel/setup.bash
   $ roslaunch hfsd hfsd_test.launch
 ``` 
-* In a second terminal type the following:
+* In a second terminal play the test bag file included in the test directory:
 ```sh
-  $ cd ~/catkin_ws/src/hfsd
+  $ cd ~/catkin_ws/src/hfsd/test
   $ rosbag play test.bag
 ```
 * In Rviz load the config file found in at `../hfsd/rviz_config/hfsd_test.rviz`
