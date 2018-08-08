@@ -26,7 +26,7 @@ Depends on a full installation of ROS Kinetic.
 * Get the Package
 ```sh
   $ cd ~/catkin_ws/src
-  $ git clone https://github.com/unr-arl/HFSD.git
+  $ git clone https://github.com/unr-arl/hfsd.git
 ```
 * Build the workspace
 ```sh
@@ -45,8 +45,10 @@ Depends on a full installation of ROS Kinetic.
   $ cd ~/catkin_ws/src/hfsd
   $ rosbag play test.bag
 ```
+* In Rviz load the config file found in at `../hfsd/rviz_config/hfsd_test.rviz`
 * Rviz should show something similar to this:
 
+ ![Rviz Example](/rviz_config/RvizTest.png?raw=true "Rviz Example")
 ## Basic Usage
 ### Launching the Package
 To launch the program:
