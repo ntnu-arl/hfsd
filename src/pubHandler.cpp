@@ -20,13 +20,14 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_count = 0;
 	_alignmentSwitch = 0;
 	_loops =0;
+	_sequence = 0;
 	_colors.push_back(Scalar(255,30,30));
 	_colors.push_back(Scalar(0,168,8));
 	_colors.push_back(Scalar(0,208,255));
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
-
+	
 	n.param("markerLifetime",_markerLifetime,0.0);
 	n.param("arrowShaftDiameter",_arrowShaftDiameter,0.1);
 	n.param("arrowHeadDiameter",_arrowHeadDiameter,0.15);
@@ -535,13 +536,15 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	hfsd::Vector3Array outVect;
 	outVect.vectors.resize(trajectories.size());
 	ros::Time stamp = ros::Time::now();
+        ++_sequence;
+        outVect.header.seq = _sequence;
 	outVect.header.stamp = stamp;
 	outVect.header.frame_id = "map";
 	
 	for(int i = 0 ; i <trajectories.size();i++){
 		
-		markArray.markers[i].header.frame_id = "map";
-		markArray.markers[i].header.stamp = stamp;
+		
+		markArray.markers[i].header = outVect.header;
 		markArray.markers[i].ns = "my_namespace" + to_string(_loops);
 		markArray.markers[i].id = i;
 		markArray.markers[i].type = visualization_msgs::Marker::ARROW;

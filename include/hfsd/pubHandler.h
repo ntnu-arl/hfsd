@@ -101,6 +101,7 @@ private:
 	int _medianSize;
 	int _skipCounter;
 	int _loops;
+	int _sequence;
 
 	Eigen::Vector3d _CurrentV;
 	Eigen::Vector3d _initV;
