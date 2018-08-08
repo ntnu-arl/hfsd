@@ -10,6 +10,7 @@
 pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
 	_pubOdometry = n.advertise<nav_msgs::Odometry>("OdomOut",num);
+        _pubVect = n.advertise<hfsd::Vector3Array>("projvecs",num);
 	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker",0);
 	image_transport::ImageTransport it(n);
 	_pubImage = it.advertise("open/image", 1);
@@ -511,6 +512,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 		std::chrono::high_resolution_clock::time_point t_end2 = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> visTime1(t_end2-t_start2);
 
+		std::sort(trajectories.begin(),trajectories.end(), pubHandler::sortingObj);
 	for(int i =0; i<trajectories.size();i++){
 		trajectories[i].sectorX = (trajectories[i].sectorX * (180/_ElRez)*(2*M_PI/360));
 		trajectories[i].sectorY = ((trajectories[i].sectorY -_AzRez/2) * (360/_AzRez)*(2*M_PI/360));
@@ -530,22 +532,32 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	//_vis_pub.publish(deleter);
 	visualization_msgs::MarkerArray markArray;
 	markArray.markers.resize(trajectories.size());
-
+	hfsd::Vector3Array outVect;
+	outVect.vectors.resize(trajectories.size());
+	ros::Time stamp = ros::Time();
+	outVect.header.stamp = stamp;
+	outVect.header.frame_id = "map";
+	
 	for(int i = 0 ; i <trajectories.size();i++){
-
+		
 		markArray.markers[i].header.frame_id = "map";
-		markArray.markers[i].header.stamp = ros::Time();
+		markArray.markers[i].header.stamp = stamp;
 		markArray.markers[i].ns = "my_namespace" + to_string(_loops);
 		markArray.markers[i].id = i;
 		markArray.markers[i].type = visualization_msgs::Marker::ARROW;
 		markArray.markers[i].action = visualization_msgs::Marker::ADD;
 		markArray.markers[i].lifetime = ros::Duration(_markerLifetime);
-
+	
 		geometry_msgs::Point start;
 		start.x = 0;
 		start.y = 0;
 		start.z = 0;
 		geometry_msgs::Point end;
+		geometry_msgs::Vector3 vect;
+		vect.x =trajectories[i].xyz[0];
+		vect.y =trajectories[i].xyz[1];
+		vect.z =trajectories[i].xyz[2];
+		outVect.vectors[i] = vect;
 		end.x =trajectories[i].xyz[0];
 		end.y =trajectories[i].xyz[1];
 		end.z =trajectories[i].xyz[2];
@@ -566,6 +578,7 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", grayMat).toImageMsg();
 	if(_vis_pub.getNumSubscribers()>0 && _loops % _markerSkip == 0)_vis_pub.publish(markArray);
 	if(_pubImage.getNumSubscribers()>0)_pubImage.publish(msg);
+        if(_pubVect.getNumSubscribers()>0)_pubVect.publish(outVect);
 	if(_pubContours.getNumSubscribers()>0)_pubContours.publish(msgC);
 	std::chrono::high_resolution_clock::time_point t_end3 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> visTime2(t_end3-t_start3);

@@ -56,7 +56,11 @@
   <build_depend>image_transport</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
-  <build_depend>std_msgs</build_depend>
+  <build_depend>std_msgs</build_depend> 
+  <build_depend>geometry_msgs</build_depend> 
+  <build_depend>message_generation</build_depend>
+  <build_export_depend>message_generation</build_export_depend>
+  <build_export_depend>message_runtime</build_export_depend>
   <build_export_depend>OpenCV</build_export_depend>
   <build_export_depend>PCL</build_export_depend>
   <build_export_depend>camera_info_manager</build_export_depend>
@@ -66,6 +70,7 @@
   <build_export_depend>rospy</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <exec_depend>OpenCV</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>PCL</exec_depend>
   <exec_depend>camera_info_manager</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
@@ -73,7 +78,7 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-
+  <exec_depend>message_runtime</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

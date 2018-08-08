@@ -43,6 +43,7 @@
 #include <boost/foreach.hpp>
 #include <cmath>
 #include "tf2_ros/transform_broadcaster.h"
+#include "hfsd/Vector3Array.h"
 
 
 using namespace cv;
@@ -67,10 +68,14 @@ public:
 		double magnitude;
 		std::vector<double> xyz;
 	};
+	struct sorter{
+  		bool operator() (trajectory i,trajectory j) { return (j.magnitude<i.magnitude);}
+	} sortingObj;
 
 private:
 	/* Private Variables*/
 	ros::Publisher _pubPoints;
+	ros::Publisher _pubVect;
 	ros::Publisher _pubOdometry;
 	ros::Publisher _vis_pub;
 	image_transport::Publisher _pubImage;
