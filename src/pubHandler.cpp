@@ -7,16 +7,9 @@
 //============================================================================
 
 #include "hfsd/pubHandler.h"
-pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
-	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s,num);
-	_pubOdometry = n.advertise<nav_msgs::Odometry>("OdomOut",num);
-        _pubVect = n.advertise<hfsd::Vector3Array>("direction_vectors",num);
-	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker",0);
-	image_transport::ImageTransport it(n);
-	_pubImage = it.advertise("open/image", 1);
-	_pubContours = it.advertise("open/contours", 1);
-	_pubVote = it.advertise("open/vote", 1);
-	_queueCurrentSize = 0;
+
+pubHandler::pubHandler(ros::NodeHandle & n, const std::string & s, int bufSize){
+	_windowCurrentSize = 0;
 	_count = 0;
 	_alignmentSwitch = 0;
 	_loops =0;
@@ -27,13 +20,13 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 	_colors.push_back(Scalar(255,93,0));
 	_colors.push_back(Scalar(0,0,255));
 	_colors.push_back(Scalar(131,0,255));
-	
-	n.param("markerLifetime",_markerLifetime,0.0);
-	n.param("arrowShaftDiameter",_arrowShaftDiameter,0.1);
-	n.param("arrowHeadDiameter",_arrowHeadDiameter,0.15);
-	n.param("arrowHeadLength",_arrowHeadLength,0.1);
-	n.param("markerMag",_relativeMagnitude,2.0);
-	n.param("markerSkip",_markerSkip,0);
+	n.param("markerLifetime", _markerLifetime, 0.0);
+	n.param("arrowShaftDiameter", _arrowShaftDiameter, 0.1);
+	n.param("arrowHeadDiameter", _arrowHeadDiameter, 0.15);
+	n.param("arrowHeadLength", _arrowHeadLength, 0.1);
+	n.param("markerMag", _relativeMagnitude, 2.0);
+	n.param("markerSkip", _markerSkip, 0);
+        n.param("hfsd_map_frame", _hfsdMapFrame, std::string("hfsd_map"));
 	//_tfListener=new tf2_ros::TransformListener(_tfBuffer);
 	if(n.getParam("HREZ", _AzRez)){
 		ROS_INFO("HORIZONTAL RESOLUTION SET CORRECTLY");
@@ -51,7 +44,13 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 		ROS_INFO("QUEUE SIZE SET CORRECTLY");
 	}else{
 		ROS_INFO("ERROR: QUEUE SIZE SET INCORRECTLY. SETTING TO DEFAULT");
-		_queueSize = 7;
+		_queueSize = 10;
+	}
+	if(n.getParam("windowSize", _windowSize)){
+		ROS_INFO("WINDOW SIZE SET CORRECTLY");
+	}else{
+		ROS_INFO("ERROR: WINDOW SIZE SET INCORRECTLY. SETTING TO DEFAULT");
+		_windowSize = 7;
 	}
 	if(n.getParam("skipFrames", _skipCounter)){
 		ROS_INFO("SKIP FRAME COUNTER SET CORRECTLY");
@@ -197,27 +196,38 @@ pubHandler::pubHandler(ros::NodeHandle n, const std::string& s, int num){
 		ROS_INFO("ERROR: DEBUG MESSAGE VISIBILITY SET INCORRECTLY. SETTING TO DEFAULT");
 		_debug = true;
 	}
+	
+	// Advertising
+	_pubPoints = n.advertise<sensor_msgs::PointCloud2>(s, bufSize);
+	_pubOdometry = n.advertise<nav_msgs::Odometry>("OdomOut", bufSize);
+	_pubVect = n.advertise<hfsd::Vector3Array>("direction_vectors", bufSize);
+	_vis_pub = n.advertise<visualization_msgs::MarkerArray>("visualization_marker", 0);
+	image_transport::ImageTransport it(n);
+	_pubImage = it.advertise("open/image", 1);
+	_pubContours = it.advertise("open/contours", 1);
+	_pubVote = it.advertise("open/vote", 1);
+	
+	// Subscriptions
+	subPoints = n.subscribe("points_input", _queueSize, &pubHandler::messageReceivedCloud, this);
+	subOdometry = n.subscribe("odometry_input", _queueSize, &pubHandler::messageReceivedPose, this);
 }
 
 //callback function for the subscriber. performs all of the enqueuing and dequeuing;
-void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg){
-	if(_debug)ROS_INFO("Recieving Cloud...");
-	pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>(*msg));
-	_data = temp;
+void pubHandler::messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & msg){
+	if(_debug)ROS_INFO("Receiving Cloud...");
+	_data = boost::make_shared<std::remove_const<std::remove_reference<decltype(*msg)>::type>::type >(*msg);
 	_alignmentSwitch = 1;
 }
 
-//this recieves the odometry for the program to create the sliding window
-void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
+//this receives the odometry for the program to create the sliding window
+void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr & msg){
 	if(_count >= _skipCounter && _alignmentSwitch == 1){
 		if(_loops == 0){
 			tf2::fromMsg(msg->pose.pose.position, _initV);
-			tf2::fromMsg(msg->pose.pose.orientation,_initQ);
+			tf2::fromMsg(msg->pose.pose.orientation, _initQ);
 		}
 		_loops++;
-		stringstream lo;
-		lo<<"CURRENT LOOP: "<<_loops;
-		if(_timing)ROS_INFO_STREAM(lo.str());
+		if(_timing)ROS_INFO_STREAM("CURRENT LOOP: "<<_loops);
 		if(_debug)ROS_INFO("Receiving Odometry...");
 		std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
 
@@ -225,14 +235,14 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		//geometry_msgs::TransformStamped transformStamped = _tfBuffer.lookupTransform("/imu","/stereo_link",ros::Time(0));
 		//Eigen::Affine3d affine = tf2::transformToEigen(transformStamped);
 		nav_msgs::Odometry odomData = *msg;
-		odomData.header.stamp = ros::Time::now();
-		if(_pubOdometry.getNumSubscribers()>0)_pubOdometry.publish(odomData);
-		if(_queueCurrentSize >= _queueSize){
+		//odomData.header.stamp = ros::Time::now();
+		if(_pubOdometry.getNumSubscribers()>0) _pubOdometry.publish(odomData);
+		if(_windowCurrentSize >= _windowSize){
 			_window.pop_back();
 			_odomWindow.pop_back();
-			_queueCurrentSize--;
+			_windowCurrentSize--;
 		}
-		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudSceneFiltered(new pcl::PointCloud<pcl::PointXYZ>);
+		auto ptCloudSceneFiltered = boost::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
 		pcl::VoxelGrid<pcl::PointXYZ> sor;
 		sor.setInputCloud(_data);
 		sor.setLeafSize (_voxelSize, _voxelSize, _voxelSize);
@@ -240,21 +250,19 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		//pcl::transformPointCloud(*ptCloudSceneFiltered,*ptCloudSceneFiltered,affine);
 		_window.push_front(ptCloudSceneFiltered);
 		_odomWindow.push_front(odomData);
-		_queueCurrentSize++;
+		_windowCurrentSize++;
 		if(_timing){
 			std::chrono::high_resolution_clock::time_point t_end2 = std::chrono::high_resolution_clock::now();
 			std::chrono::duration<double, std::milli> queueTime(t_end2-t_start2);
 			_averageQueueing += queueTime;
-			stringstream s1;
-			s1<<"QUEUEING TIME: " << queueTime.count() << " milliseconds "<<"AVERAGE QUEUEING TIME: "<<_averageQueueing.count()/_loops<<" milliseconds";
-			ROS_INFO_STREAM(s1.str());
+			ROS_INFO_STREAM("QUEUEING TIME: " << queueTime.count() << " milliseconds "<<"AVERAGE QUEUEING TIME: "<<_averageQueueing.count()/_loops<<" milliseconds");
 		}
-		pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(_preprocessing(_window, _odomWindow)));
+		auto ptCloudScene = _preprocessing(_window, _odomWindow);
 
 		  geometry_msgs::TransformStamped transformStamped;
 
-		  transformStamped.header.frame_id = "world";
-		  transformStamped.child_frame_id = "map";
+		  transformStamped.header.frame_id = msg->header.frame_id; //"world";
+		  transformStamped.child_frame_id = _hfsdMapFrame;
 		  transformStamped.transform.translation.x = _CurrentV.x();
 		  transformStamped.transform.translation.y = _CurrentV.y();
 		  transformStamped.transform.translation.z = _CurrentV.z();
@@ -262,74 +270,71 @@ void pubHandler::messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg){
 		  transformStamped.transform.rotation.y = _CurrentQ.y();
 		  transformStamped.transform.rotation.z = _CurrentQ.z();
 		  transformStamped.transform.rotation.w = _CurrentQ.w();
-		  transformStamped.header.stamp = ros::Time::now();
+		  transformStamped.header.stamp = odomData.header.stamp; //ros::Time::now();
 		  tfb.sendTransform(transformStamped);
 
 		_freeTrajectories(ptCloudScene);
 
-		ptCloudScene->header.frame_id = "map";
-		pcl_conversions::toPCL(ros::Time::now(),ptCloudScene->header.stamp);
-
-		if(_pubPoints.getNumSubscribers()>0) _pubPoints.publish(*ptCloudScene);
+		if(_pubPoints.getNumSubscribers()>0){
+		  ptCloudScene->header.frame_id = _hfsdMapFrame;
+		  //pcl_conversions::toPCL(ros::Time::now(), ptCloudScene->header.stamp);
+		  _pubPoints.publish(*ptCloudScene);
+		}
 		_count = 0;
 		_alignmentSwitch=0;
-		if(_timing){
-			std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double, std::milli> executionTime(t_end-t_start2);
-			_averageExecution += executionTime;
-			stringstream s;
-			s<<"EXECUTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXECUTION TIME: "<<_averageExecution.count()/_loops<<" milliseconds";
-			ROS_INFO_STREAM(s.str());
-			s.clear();
-		}
-		}else{
-			if(_debug)ROS_INFO("SKIPPING...");
-			_count++;
-		}
+		  if(_timing){
+		    std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
+		    std::chrono::duration<double, std::milli> executionTime(t_end-t_start2);
+		    _averageExecution += executionTime;
+		    ROS_INFO_STREAM("EXECUTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXECUTION TIME: "<<_averageExecution.count()/_loops<<" milliseconds");
+		  }
+	}
+	else{
+		if(_debug)ROS_INFO("SKIPPING...");
+		_count++;
+	}
 }
 
 //takes in two quaternions and gives back the quaternion that rotates from the starting quaternion to the next quaternion
-Eigen::Quaterniond pubHandler::differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end){
+Eigen::Quaterniond pubHandler::differenceOfQuat(const Eigen::Quaterniond & start, const Eigen::Quaterniond & end){
 	Eigen::Quaterniond difference = end.inverse() * start;
 	return difference;
 }
-Eigen::Vector3d pubHandler::differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end){
+Eigen::Vector3d pubHandler::differenceOfVec(const Eigen::Vector3d & start, const Eigen::Vector3d & end){
 	Eigen::Vector3d difference = start-end;
 	return difference;
 }
-//this is the pre-processing step that transforms and filters the point cloud queue
-pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, std::deque<nav_msgs::Odometry> odomWindow){
+//this is the pre-processing step that transforms and filters the point cloud window
+pcl::PointCloud<pcl::PointXYZ>::Ptr pubHandler::_preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, const std::deque<nav_msgs::Odometry> & odomWindow){
 	if(_debug)ROS_INFO("Preprocessing...");
 	std::chrono::high_resolution_clock::time_point t_start1 = std::chrono::high_resolution_clock::now();
-	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudScene(new pcl::PointCloud<pcl::PointXYZ>(*window[0]));
+	auto ptCloudScene = boost::make_shared<pcl::PointCloud<pcl::PointXYZ> >(*window[0]);
 	Eigen::Vector3d endV;
 	Eigen::Quaterniond endQ;
 	tf2::fromMsg(odomWindow[0].pose.pose.position, endV);
-	tf2::fromMsg(odomWindow[0].pose.pose.orientation,endQ);
-	_CurrentQ = differenceOfQuat(endQ,_initQ);
-	_CurrentV = differenceOfVec(endV,_initV);
+	tf2::fromMsg(odomWindow[0].pose.pose.orientation, endQ);
+	_CurrentQ = differenceOfQuat(endQ, _initQ);
+	_CurrentV = differenceOfVec(endV, _initV);
 	_CurrentV = _CurrentV.transpose() * _initQ.toRotationMatrix();
 	std::chrono::high_resolution_clock::time_point t_start2 = std::chrono::high_resolution_clock::now();
-	stringstream ss;
-        ss<<"CURRENT QUEUE SIZE: "<<_queueCurrentSize;
-	ROS_INFO_STREAM(ss.str());
-	for(int i = 1; i<_queueCurrentSize;i++){
+	if(_debug)ROS_INFO_STREAM("CURRENT WINDOW SIZE: "<<_windowCurrentSize);
+	for(int i = 1; i<_windowCurrentSize;i++){
 		Eigen::Vector3d startV;
 		Eigen::Quaterniond startQ;
 		tf2::fromMsg(odomWindow[i].pose.pose.position, startV);
-		tf2::fromMsg(odomWindow[i].pose.pose.orientation,startQ);
-		Eigen::Quaterniond differenceQ = differenceOfQuat(startQ,endQ);
-		Eigen::Vector3d differenceV = differenceOfVec(startV,endV);
+		tf2::fromMsg(odomWindow[i].pose.pose.orientation, startQ);
+		Eigen::Quaterniond differenceQ = differenceOfQuat(startQ, endQ);
+		Eigen::Vector3d differenceV = differenceOfVec(startV, endV);
 		differenceV = differenceV.transpose() * endQ.toRotationMatrix();
 		Eigen::Affine3d affine1 = Eigen::Affine3d::Identity();;
 		affine1.translation() << differenceV[0],differenceV[1],differenceV[2];
 		affine1.rotate(differenceQ.toRotationMatrix());
-		pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::transformPointCloud(*window[i],*transformedCloud,affine1);
-		*ptCloudScene += *transformedCloud;
+		pcl::PointCloud<pcl::PointXYZ> transformedCloud;
+		pcl::transformPointCloud(*window[i],transformedCloud,affine1);
+		*ptCloudScene += transformedCloud;
 	}
 	std::chrono::high_resolution_clock::time_point t_end2 = std::chrono::high_resolution_clock::now();
-	pcl::PointCloud<pcl::PointXYZ>::Ptr ptCloudSceneFiltered(new pcl::PointCloud<pcl::PointXYZ>);
+	auto ptCloudSceneFiltered = boost::make_shared<pcl::PointCloud<pcl::PointXYZ> >();
 	std::chrono::high_resolution_clock::time_point t_start3 = std::chrono::high_resolution_clock::now();
 
 	if(_uniformGrid){
@@ -345,32 +350,22 @@ pcl::PointCloud<pcl::PointXYZ> pubHandler::_preprocessing(std::deque<pcl::PointC
 		std::chrono::duration<double, std::milli> preprocessingTime(t_end1-t_start1);
 		std::chrono::duration<double, std::milli> transformTime(t_end2-t_start2);
 		std::chrono::duration<double, std::milli> voxelTime(t_end3-t_start3);
-		stringstream s;
 		_averagePreprocessing += preprocessingTime;
 		_averageTransform += transformTime;
 		_averageVoxel += voxelTime;
-		s<<"TRANSFORM TIME: " << transformTime.count() << " milliseconds "<<"AVERAGE TRANSFORM TIME: "<<_averageTransform.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s.str());
-		s.str(std::string());
-		s<<"VOXEL GRID TIME: " << voxelTime.count() << " milliseconds "<<"AVERAGE VOXEL GRID TIME: "<<_averageVoxel.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s.str());
-		s.str(std::string());
-		s<<"PREPROCESSING TIME: " << preprocessingTime.count() << " milliseconds "<<"AVERAGE PREPROCESSING TIME: "<<_averagePreprocessing.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s.str());
-		s.str(std::string());
+		ROS_INFO_STREAM("TRANSFORM TIME: " << transformTime.count() << " milliseconds "<<"AVERAGE TRANSFORM TIME: "<<_averageTransform.count()/_loops<<" milliseconds");
+		ROS_INFO_STREAM("VOXEL GRID TIME: " << voxelTime.count() << " milliseconds "<<"AVERAGE VOXEL GRID TIME: "<<_averageVoxel.count()/_loops<<" milliseconds");
+		ROS_INFO_STREAM("PREPROCESSING TIME: " << preprocessingTime.count() << " milliseconds "<<"AVERAGE PREPROCESSING TIME: "<<_averagePreprocessing.count()/_loops<<" milliseconds");
 	}
-	if(_uniformGrid)return *ptCloudSceneFiltered;
-	return *ptCloudScene;
+	if(_uniformGrid)return ptCloudSceneFiltered;
+	return ptCloudScene;
 }
 
-cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
+cv::Mat pubHandler::_radmatrix(const std::vector<pubHandler::sector> & points){
 	if(_debug)ROS_INFO("Creating RadMatrix...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	cv::Mat radmat(2*_AzRez, _ElRez,CV_8UC1, cv::Scalar(0));
-	double** tempMat = new double* [_AzRez];
-	for(int i = 0; i<_AzRez;i++){
-		tempMat[i] = new double[_ElRez];
-	}
+	std::vector<std::vector<double> > tempMat(_AzRez, std::vector<double>(_ElRez, 0.0));
 	for(int i = 0; i<_AzRez; i++){
 		for( int j = 0; j<_ElRez; j++){
 			tempMat[i][j]= -1.0;
@@ -418,20 +413,17 @@ cv::Mat pubHandler::_radmatrix(std::vector<pubHandler::sector> points){
 			radmat.at<uchar>(row+ 3*_AzRez/2,col) = (uchar)(std::min((255-_iOffset)*pow((tempMat[row][col]/max),2),255.0));
 		}
 	}
-	delete[] tempMat;
 	if(_debug)ROS_INFO("RadMatrix Complete");
 	if(_timing){
 		std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
 		_averageRad += executionTime;
-		stringstream s;
-		s<<"HISTOGRAM TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE HISTOGRAM TIME: "<<_averageRad.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s.str());
+		ROS_INFO_STREAM("HISTOGRAM TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE HISTOGRAM TIME: "<<_averageRad.count()/_loops<<" milliseconds");
 	}
 	return radmat;
 }
 //this is the primary algorithm used to determine the best vectors for travel
-std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTrajectories(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud){
 	if(_debug)ROS_INFO("Beginning VFH...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	cv::RNG _rng(12345);
@@ -518,19 +510,9 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 		trajectories[i].sectorX = (trajectories[i].sectorX * (180/_ElRez)*(2*M_PI/360));
 		trajectories[i].sectorY = ((trajectories[i].sectorY -_AzRez/2) * (360/_AzRez)*(2*M_PI/360));
 		trajectories[i].magnitude *=_relativeMagnitude/maxMag;
-		std::vector<double> aer = {trajectories[i].sectorY,trajectories[i].sectorX,trajectories[i].magnitude};
-		trajectories[i].xyz = _convertToCartesian(aer);
+		trajectories[i]._convertToCartesian();
 	}
 	std::chrono::high_resolution_clock::time_point t_start3 = std::chrono::high_resolution_clock::now();
-	visualization_msgs::MarkerArray deleter;
-	deleter.markers.resize(1);
-	deleter.markers[0].header.frame_id = "map";
-	deleter.markers[0].header.stamp = ros::Time();
-	deleter.markers[0].ns = "my_namespace";
-	deleter.markers[0].id = 0;
-	deleter.markers[0].type = visualization_msgs::Marker::ARROW;
-	deleter.markers[0].action = visualization_msgs::Marker::DELETEALL;
-	//_vis_pub.publish(deleter);
 	visualization_msgs::MarkerArray markArray;
 	markArray.markers.resize(trajectories.size());
 	hfsd::Vector3Array outVect;
@@ -539,13 +521,11 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
         ++_sequence;
         outVect.header.seq = _sequence;
 	outVect.header.stamp = stamp;
-	outVect.header.frame_id = "map";
+	outVect.header.frame_id = _hfsdMapFrame;
 	
 	for(int i = 0 ; i <trajectories.size();i++){
-		
-		
 		markArray.markers[i].header = outVect.header;
-		markArray.markers[i].ns = "my_namespace" + to_string(_loops);
+		markArray.markers[i].ns = "freespace_vectors_" + to_string(_loops);
 		markArray.markers[i].id = i;
 		markArray.markers[i].type = visualization_msgs::Marker::ARROW;
 		markArray.markers[i].action = visualization_msgs::Marker::ADD;
@@ -573,17 +553,20 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 		markArray.markers[i].color.r = colors[i].val[0]/255.0;
 		markArray.markers[i].color.g = colors[i].val[1]/255.0;
 		markArray.markers[i].color.b = colors[i].val[2]/255.0;
-		//only if using a MESH_RESOURCE marker type:
-		markArray.markers[i].mesh_resource = "package://pr2_description/meshes/base_v0/base.dae";
 
 	}
-	sensor_msgs::ImagePtr msgC = cv_bridge::CvImage(std_msgs::Header(), "rgb8", drawing).toImageMsg();
-	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", grayMat).toImageMsg();
-	if(_vis_pub.getNumSubscribers()>0 && _loops % _markerSkip == 0)_vis_pub.publish(markArray);
-	if(_pubImage.getNumSubscribers()>0)_pubImage.publish(msg);
+
+	if(_vis_pub.getNumSubscribers()>0 && _loops % (_markerSkip+1) == 0)_vis_pub.publish(markArray);
+	if(_pubImage.getNumSubscribers()>0){
+	  sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", grayMat).toImageMsg();
+          _pubImage.publish(msg);
+        }
         if(_pubVect.getNumSubscribers()>0)_pubVect.publish(outVect);
-	if(_pubContours.getNumSubscribers()>0)_pubContours.publish(msgC);
-	std::chrono::high_resolution_clock::time_point t_end3 = std::chrono::high_resolution_clock::now();
+	if(_pubContours.getNumSubscribers()>0){
+	  sensor_msgs::ImagePtr msgC = cv_bridge::CvImage(std_msgs::Header(), "rgb8", drawing).toImageMsg();
+          _pubContours.publish(msgC);
+	}
+        std::chrono::high_resolution_clock::time_point t_end3 = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> visTime2(t_end3-t_start3);
 	visTime2 += visTime1;
 	if(_debug)ROS_INFO("VFH Complete");
@@ -593,28 +576,14 @@ std::map<std::string,std::vector<pubHandler::trajectory> > pubHandler::_freeTraj
 		_averageAlgorithm += algorithmTime;
 		_averageAlgorithm -= visTime2;
 		_averageVis += visTime2;
-		stringstream s3;
-		s3<<"VISUALIZATION TIME: " << visTime2.count() << " milliseconds "<<"AVERAGE VISUALIZATION TIME: "<<_averageVis.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s3.str());
-		stringstream s2;
-		s2<<"ALGORITHM TIME: " << algorithmTime.count() << " milliseconds "<<"AVERAGE ALGORITHM TIME: "<<_averageAlgorithm.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s2.str());
+		ROS_INFO_STREAM("VISUALIZATION TIME: " << visTime2.count() << " milliseconds "<<"AVERAGE VISUALIZATION TIME: "<<_averageVis.count()/_loops<<" milliseconds");
+		ROS_INFO_STREAM("ALGORITHM TIME: " << algorithmTime.count() << " milliseconds "<<"AVERAGE ALGORITHM TIME: "<<_averageAlgorithm.count()/_loops<<" milliseconds");
 	}
 	return trajVec;
 
 }
 
-std::vector<double> pubHandler::_convertToCartesian(std::vector<double> aer){
-		double a=aer.at(0);
-		double e=aer.at(1);
-		double r=aer.at(2);
-		aer.at(0)=r*sin(e)*cos(a);
-		aer.at(1)=r*sin(e)*sin(a);
-		aer.at(2)=r*cos(e);
-	return aer;
-
-}
-std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud){
+std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud){
 	if(_debug)ROS_INFO("Extracting Points...");
 	std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 	std::vector<pubHandler::sector> sectors;
@@ -646,9 +615,7 @@ std::vector<pubHandler::sector> pubHandler::_extractPointsFromCloud(pcl::PointCl
 		std::chrono::high_resolution_clock::time_point t_end = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> executionTime(t_end-t_start);
 		_averageExtraction += executionTime;
-		stringstream s;
-		s<<"EXTRACTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXTRACTION TIME: "<<_averageExtraction.count()/_loops<<" milliseconds";
-		ROS_INFO_STREAM(s.str());
+		ROS_INFO_STREAM("EXTRACTION TIME: " << executionTime.count() << " milliseconds "<<"AVERAGE EXTRACTION TIME: "<<_averageExtraction.count()/_loops<<" milliseconds");
 	}
 	return sectors;
 }

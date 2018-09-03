@@ -10,9 +10,7 @@
 
 
 #include <ros/ros.h>
-#include <tf2_ros/transform_listener.h>
-#include <tf2_ros/buffer.h>
-#include <tf2/buffer_core.h>
+#include <tf/transform_listener.h>
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
@@ -24,50 +22,45 @@
 #include "pcl/common/transforms.h"
 #include "tf2_eigen/tf2_eigen.h"
 #include <ros/callback_queue.h>
-using namespace std;
-string base_frame = "base_link";
+
+std::shared_ptr<tf::TransformListener> tfListener;
 ros::Publisher pubPoints;
-geometry_msgs::TransformStamped transformStamped;
-void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg){
-	pcl::PointCloud<pcl::PointXYZ>::Ptr temp(new pcl::PointCloud<pcl::PointXYZ>(*msg));
-	Eigen::Affine3d affine = tf2::transformToEigen(transformStamped);
-	pcl::transformPointCloud(*temp,*temp,affine);
+
+std::string base_frame = "base_link";
+tf::StampedTransform stampedTf;
+geometry_msgs::TransformStamped gm_tfStamped;
+  
+void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & msg){
+    try{
+      tfListener->waitForTransform(base_frame, msg->header.frame_id, pcl_conversions::fromPCL(msg->header.stamp), ros::Duration(0.1));
+      tfListener->lookupTransform(base_frame, msg->header.frame_id, pcl_conversions::fromPCL(msg->header.stamp), stampedTf);
+    }
+    catch (tf::TransformException &ex) {
+      ROS_WARN("%s",ex.what());
+      return;
+    }
+
+    auto temp = boost::make_shared<std::remove_const<std::remove_reference<decltype(*msg)>::type>::type >(*msg);
+        
+    tf::transformStampedTFToMsg(stampedTf, gm_tfStamped);
+	Eigen::Affine3d affine = tf2::transformToEigen(gm_tfStamped);
+	pcl::transformPointCloud(*temp, *temp, affine);
 	temp->header.frame_id = base_frame;
 	pubPoints.publish(*temp);
 }
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "cloudTransformer");
-  std::string topicPoints;
+  
+  ros::NodeHandle nh("cloudTransformer");
 
+  nh.param("base_frame", base_frame, base_frame);
+  
+  tfListener = std::make_shared<tf::TransformListener>();
+  pubPoints = nh.advertise<sensor_msgs::PointCloud2>("points", 10);
 
-  string sensor_frame = "camera";
-
-
-  ros::NodeHandle node("cloudTransformer");
-
-  node.param("sensor_frame",sensor_frame,sensor_frame);
-  node.param("base_link",base_frame,base_frame);
-  ros::Subscriber subPoints = node.subscribe<pcl::PointCloud<pcl::PointXYZ> >("inputcloud",10,&messageReceivedCloud);
-  pubPoints = node.advertise<sensor_msgs::PointCloud2 >("points", 10);
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
-  ros::Rate rate(10.0);
-  while (node.ok()){
-
-    try{
-      transformStamped = tfBuffer.lookupTransform(base_frame, sensor_frame,
-                               ros::Time(0));
-
-    }
-    catch (tf2::TransformException &ex) {
-      ROS_WARN("%s",ex.what());
-      ros::Duration(1.0).sleep();
-      continue;
-    }
-    ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0));
-    rate.sleep();
-  }
+  ros::Subscriber subPoints = nh.subscribe("/velodyne_points", 10, &messageReceivedCloud);
+ 
+  ros::spin();
   return 0;
 };

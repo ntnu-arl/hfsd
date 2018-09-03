@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   genmsg
-  tf2_ros
+  tf
   geometry_msgs
   message_generation
 )
@@ -116,7 +116,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include ${PCL_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS} ${Eigen3_INCLUDE_DIRS}
-  LIBRARIES hfsd
+  LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS camera_info_manager cv_bridge image_transport roscpp rospy std_msgs geometry_msgs message_runtime
   DEPENDS PCL OpenCV
 )
@@ -137,20 +137,18 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/vfh.cpp
-# )
+add_library(pubHandler src/pubHandler.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-## add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(pubHandler ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/vfh_node.cpp)
-add_executable(hfsd src/VFH3D.cpp)
+add_executable(${PROJECT_NAME} src/VFH3D.cpp)
 add_executable(cloudTransformer src/cloudTransformer.cpp)
 
 ## Rename C++ executable without prefix
@@ -161,7 +159,7 @@ add_executable(cloudTransformer src/cloudTransformer.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(hfsd ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -169,10 +167,13 @@ add_dependencies(hfsd ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARG
 #   ${PCL_LIBRARIES}
 #   ${OpenCV_LIBRARIES}
 # )
-target_link_libraries(hfsd
+target_link_libraries(pubHandler
  ${catkin_LIBRARIES}
  ${PCL_LIBRARIES}
  ${OpenCV_LIBRARIES}
+)
+target_link_libraries(${PROJECT_NAME}
+ pubHandler
 )
 target_link_libraries(cloudTransformer
  ${catkin_LIBRARIES}

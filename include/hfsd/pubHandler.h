@@ -51,11 +51,11 @@ using namespace std;
 class pubHandler{
 public:
 	/*Public Functions*/
-	pubHandler(ros::NodeHandle n, const std::string& s, int num);
-	void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr& msg);
-	void messageReceivedPose(const nav_msgs::Odometry::ConstPtr& msg);
-	Eigen::Quaterniond differenceOfQuat(Eigen::Quaterniond start, Eigen::Quaterniond end);
-	Eigen::Vector3d differenceOfVec(Eigen::Vector3d start, Eigen::Vector3d end);
+	pubHandler(ros::NodeHandle & n, const std::string & s, int bufSize);
+	void messageReceivedCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & msg);
+	void messageReceivedPose(const nav_msgs::Odometry::ConstPtr & msg);
+	Eigen::Quaterniond differenceOfQuat(const Eigen::Quaterniond & start, const Eigen::Quaterniond & end);
+	Eigen::Vector3d differenceOfVec(const Eigen::Vector3d & start, const Eigen::Vector3d & end);
 	/* Public Structs*/
 	struct sector{
 		int a;
@@ -67,6 +67,16 @@ public:
 		double sectorY;
 		double magnitude;
 		std::vector<double> xyz;
+	        void _convertToCartesian(){
+		  //Aliases just to maintain naming
+		  const double & a = sectorY;
+		  const double & e = sectorX;
+		  const double & r = magnitude;
+		  xyz.resize(3);
+		  xyz[0] = r*sin(e)*cos(a);
+		  xyz[1] = r*sin(e)*sin(a);
+		  xyz[2] = r*cos(e);
+                }
 	};
 	struct sorter{
   		bool operator() (trajectory i,trajectory j) { return (j.magnitude<i.magnitude);}
@@ -84,11 +94,12 @@ private:
 	pcl::PointCloud<pcl::PointXYZ>::Ptr _data;
 	std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > _window;
 	std::deque<nav_msgs::Odometry> _odomWindow;
-	//tf2_ros::Buffer _tfBuffer;
 	//tf2_ros::TransformListener* _tfListener;
+
 	int _alignmentSwitch;
 	int _queueSize;
-	int _queueCurrentSize;
+	int _windowSize;
+	int _windowCurrentSize;
 	int _count;
 	int _AzRez;
 	int _ElRez;
@@ -100,8 +111,8 @@ private:
 	int _boxSizeX;
 	int _medianSize;
 	int _skipCounter;
-	int _loops;
-	int _sequence;
+	size_t _loops;
+	size_t _sequence;
 
 	Eigen::Vector3d _CurrentV;
 	Eigen::Vector3d _initV;
@@ -121,6 +132,8 @@ private:
 	double _arrowShaftDiameter;
 	double _arrowHeadDiameter;
 	double _arrowHeadLength;
+
+	std::string _hfsdMapFrame;
 
 	std::chrono::duration<double, std::milli> _averageExecution;
 	std::chrono::duration<double, std::milli> _averagePreprocessing;
@@ -146,13 +159,15 @@ private:
 	int _markerSkip;
 
 	tf2_ros::TransformBroadcaster tfb;
+	
+	ros::Subscriber subPoints; 
+	ros::Subscriber subOdometry;
 
 	/*Private Functions*/
-	std::vector<double> _convertToCartesian(std::vector<double> aer);
-	std::vector<pubHandler::sector> _extractPointsFromCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-	std::map<std::string,std::vector<trajectory> > _freeTrajectories(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
-	cv::Mat _radmatrix(std::vector<sector> points);
-	pcl::PointCloud<pcl::PointXYZ> _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window,std::deque<nav_msgs::Odometry> odomWindow);
+	std::vector<pubHandler::sector> _extractPointsFromCloud(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud);
+	std::map<std::string,std::vector<trajectory> > _freeTrajectories(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud);
+	cv::Mat _radmatrix(const std::vector<sector> & points);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr _preprocessing(std::deque<pcl::PointCloud<pcl::PointXYZ>::Ptr > window, const std::deque<nav_msgs::Odometry> & odomWindow);
 };
 
 #endif /* PUBHANDLER_H_ */

@@ -8,7 +8,6 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="base_to_map_broadcaster" args="0 0 0 0 0 0 1 map $(arg base_link)" />
 
   <node name="cloudTransformer" pkg="hfsd" type="cloudTransformer" output="screen">
-     <param name="sensor_frame" value="$(arg camera)" />
      <param name="base_frame" value="$(arg base_link)" />
      <remap from="/cloudTransformer/inputcloud" to="/pico_flexx/points_reduced"/>
   </node>
@@ -58,6 +57,7 @@
      <param name="showTiming" value="true" type="bool"/>
      <param name="showDebugMessages" value="false" type="bool"/>
 
-     <remap from="/hfsd/odometry" to="/rovio/odometry"/>
+     <remap from="/hfsd/points_input" to="/cloudTransformer/points"/>     
+     <remap from="/hfsd/odometry_input" to="/rovio/odometry"/>
   </node>
 </launch>
