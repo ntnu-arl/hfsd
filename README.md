@@ -97,8 +97,8 @@ To launch the program:
 | `blurSizeY`*          | Changes the Y value of the gaussian blur size. Must be odd or 0                 |
 | `blurSigmaX`*         | Changes the X value of the gaussian blur sigma. Must be odd or 0                |
 | `blurSigmaY`*         | Changes the Y value of the gaussian blur sigma. Must be odd or 0                |
-| `median`              | Enables/Disables the gaussian blur                                              |
-| `medianSize`          | Changes the X value of the gaussian blur size. Must be odd                      |
+| `median`              | Enables/Disables the median blur                                                |
+| `medianSize`          | Changes the median blur size. Must be odd                                       |
 | `intensityOffset`     | The number that modifies intensity values for grayscale.                        |
 | `dilate`              | Enables/Disables dilation                                                       |
 | `dilationIterations`  | Number of dilations                                                             |
