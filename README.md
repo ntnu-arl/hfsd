@@ -116,6 +116,11 @@ You can contact us for any question or remark:
 * [Shehryar Khattak](mailto:shehryar@nevada.unr.edu)
 * [Kostas Alexis](mailto:kalexis@unr.edu)
 
+# Paper Associated With This Code
+
+R. Fite, S. Khattak, D. Feil-Seifer and K. Alexis, "History-Aware Free Space Detection for Efficient Autonomous Exploration using Aerial Robots," 2019 IEEE Aerospace Conference, Big Sky, MT, USA, 2019, pp. 1-8.
+doi: 10.1109/AERO.2019.8742176
+
 # Support
 This work was supported by the National Science Foundation (Award#: IIS-1757929)
 
