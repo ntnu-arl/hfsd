@@ -11,7 +11,7 @@
      <param name="base_frame" value="$(arg base_link)" />
      <remap from="/cloudTransformer/inputcloud" to="/pico_flexx/points_reduced"/>
   </node>
-  <node name="hfsd" pkg="hfsd" type="hfsd" output="screen">
+  <node name="hfsd" pkg="hfsd" type="hfsd_node" output="screen">
      <param name="markerSkip" value="15" type="int"/>
      <param name="markerMag" value="1.0" type="double"/>
      <param name="markerLifetime" value="1000.0" type="double"/>
